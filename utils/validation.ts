@@ -339,7 +339,7 @@ export function validateAndBuildMeetingTimes(options: {
   const pad = (n: number) => String(n).padStart(2, '0');
   const dateStr = `${parsedDate.year}-${pad(parsedDate.month)}-${pad(parsedDate.day)}`;
   const timeStr = `${pad(parsedStartTime.hours)}:${pad(parsedStartTime.minutes)}:00`;
-  const localDateTimeStr = `${dateStr}T${timeStr}.000Z`;
+  const localDateTimeStr = `${dateStr}T${timeStr}.000`;
 
   let startDate: Date;
   try {
@@ -359,7 +359,7 @@ export function validateAndBuildMeetingTimes(options: {
 
   const parsedEndTime = options.endTimeValue ? parseTimeString(options.endTimeValue) : null;
   if (parsedEndTime) {
-    const endDateTimeStr = `${dateStr}T${pad(parsedEndTime.hours)}:${pad(parsedEndTime.minutes)}:00.000Z`;
+    const endDateTimeStr = `${dateStr}T${pad(parsedEndTime.hours)}:${pad(parsedEndTime.minutes)}:00.000`;
     endDate = fromZonedTime(endDateTimeStr, tz);
 
     // If end time is earlier than start time, meeting crosses midnight into next day

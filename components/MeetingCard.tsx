@@ -10,7 +10,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { MeetingWithAlarms } from '../types/meeting';
 import { useTheme } from '../hooks/useTheme';
-import { formatMeetingTime, formatDuration, calculateDurationMinutes, getRelativeTimeLabel } from '../utils/dates';
+import { formatMeetingTime, formatMeetingDate, formatDuration, calculateDurationMinutes, getRelativeTimeLabel } from '../utils/dates';
 import { getPlatformDisplayInfo } from '../utils/meeting-url';
 import { MeetingStatusBadge } from './MeetingStatusBadge';
 import { formatAlarmOffsetLabel } from '../constants/alarms';
@@ -28,6 +28,7 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
   const router = useRouter();
 
   const durationMinutes = calculateDurationMinutes(meeting.startTime, meeting.endTime);
+  const dateFormatted = formatMeetingDate(meeting.startTime, meeting.timezone);
   const timeFormatted = formatMeetingTime(
     meeting.startTime,
     meeting.endTime,
@@ -68,24 +69,40 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
       style={[
         styles.container,
         {
-          backgroundColor: colors.cardBg,
+          backgroundColor:
+            meeting.status === 'in_progress'
+              ? isDark ? 'rgba(16, 185, 129, 0.08)' : '#F0FDF4'
+              : colors.cardBg,
           borderColor:
-            relativeTime.urgency === 'urgent'
+            meeting.status === 'in_progress'
+              ? colors.success
+              : relativeTime.urgency === 'urgent'
               ? colors.primary
               : colors.cardBorder,
-          borderWidth: relativeTime.urgency === 'urgent' ? 1.5 : 1,
+          borderWidth: meeting.status === 'in_progress' || relativeTime.urgency === 'urgent' ? 1.5 : 1,
         },
       ]}
     >
-      {/* Top Row: Time Range, Duration, Status */}
+      {/* Top Row: Date, Time Range, Duration, Status */}
       <View style={styles.topRow}>
         <View style={styles.timeGroup}>
           <Ionicons
-            name="time-outline"
-            size={14}
-            color={colors.primary}
+            name="calendar-outline"
+            size={13}
+            color={meeting.status === 'in_progress' ? colors.success : colors.primary}
             style={{ marginRight: 4 }}
           />
+          <Text
+            style={[
+              styles.dateText,
+              { color: meeting.status === 'in_progress' ? colors.success : colors.primary },
+            ]}
+          >
+            {dateFormatted}
+          </Text>
+          <Text style={[styles.timeSeparator, { color: colors.textMuted }]}>
+            •
+          </Text>
           <Text style={[styles.timeText, { color: colors.text }]}>
             {timeFormatted}
           </Text>
@@ -113,15 +130,37 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
         {meeting.title}
       </Text>
 
-      {/* Relative Urgency Banner (e.g. "Starts in 15 mins") */}
-      {meeting.status !== 'cancelled' && meeting.status !== 'completed' && (
+      {/* Relative Urgency Banner (e.g. "Starts in 15 mins", "Ended 2h ago") */}
+      {meeting.status !== 'cancelled' && (
         <View style={styles.relativeRow}>
+          <Ionicons
+            name={
+              meeting.status === 'completed'
+                ? 'checkmark-done-circle-outline'
+                : meeting.status === 'in_progress'
+                ? 'radio-button-on'
+                : 'time-outline'
+            }
+            size={13}
+            color={
+              meeting.status === 'in_progress'
+                ? colors.success
+                : relativeTime.urgency === 'urgent'
+                ? colors.danger
+                : relativeTime.urgency === 'soon'
+                ? colors.warning
+                : colors.textMuted
+            }
+            style={{ marginRight: 4 }}
+          />
           <Text
             style={[
               styles.relativeText,
               {
                 color:
-                  relativeTime.urgency === 'urgent'
+                  meeting.status === 'in_progress'
+                    ? colors.success
+                    : relativeTime.urgency === 'urgent'
                     ? colors.danger
                     : relativeTime.urgency === 'soon'
                     ? colors.warning
@@ -134,7 +173,7 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
         </View>
       )}
 
-      {/* Platform & Source Badges */}
+      {/* Platform, Location & Source Badges */}
       <View style={styles.badgesRow}>
         {meeting.platform !== 'none' && (
           <View
@@ -151,6 +190,28 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
             />
             <Text style={[styles.badgeText, { color: colors.text }]}>
               {platformInfo.label}
+            </Text>
+          </View>
+        )}
+
+        {meeting.location && !meeting.location.startsWith('http') && (
+          <View
+            style={[
+              styles.platformBadge,
+              { backgroundColor: colors.surfaceSubtle, maxWidth: 180 },
+            ]}
+          >
+            <Ionicons
+              name="location-outline"
+              size={12}
+              color={colors.textMuted}
+              style={{ marginRight: 4 }}
+            />
+            <Text
+              style={[styles.badgeText, { color: colors.text }]}
+              numberOfLines={1}
+            >
+              {meeting.location}
             </Text>
           </View>
         )}
@@ -227,7 +288,7 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
           >
             {hasAlarms
               ? activeAlarms.map((a) => formatAlarmOffsetLabel(a.offsetMinutes)).join(', ')
-              : 'No alarm set'}
+              : 'Add Alarm'}
           </Text>
         </TouchableOpacity>
 
@@ -236,7 +297,19 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={handleJoinPress}
-            style={[styles.joinButton, { backgroundColor: colors.primary }]}
+            style={[
+              styles.joinButton,
+              {
+                backgroundColor:
+                  meeting.status === 'in_progress'
+                    ? colors.success
+                    : meeting.platform === 'google_meet'
+                    ? '#00832D'
+                    : meeting.platform === 'zoom'
+                    ? '#2D8CFF'
+                    : colors.primary,
+              },
+            ]}
           >
             <Ionicons
               name="videocam"
@@ -244,7 +317,9 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
               color="#FFFFFF"
               style={{ marginRight: 4 }}
             />
-            <Text style={styles.joinText}>Join Meeting</Text>
+            <Text style={styles.joinText}>
+              {meeting.status === 'in_progress' ? 'Join Now' : 'Join'}
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -272,16 +347,27 @@ const styles = StyleSheet.create({
   timeGroup: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+    flexShrink: 1,
+  },
+  dateText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  timeSeparator: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   timeText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   durationBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
-    marginLeft: 6,
+    marginLeft: 2,
   },
   durationText: {
     fontSize: 11,
@@ -294,6 +380,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   relativeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 8,
   },
   relativeText: {

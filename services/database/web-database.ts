@@ -572,6 +572,28 @@ export class WebSqliteDatabase implements DatabaseInstance {
       return mEnd >= nowIso && mStatus !== 'cancelled';
     }
 
+    // Check for past meetings query: m.end_time < ? AND m.status != 'cancelled'
+    if (/end_time\s*<\s*\?\s+AND\s+[a-zA-Z0-9_.]*status\s*!=\s*'cancelled'/i.test(whereClause)) {
+      const nowIso = params[0] as string;
+      const mEnd = row['end_time'] as string;
+      const mStatus = row['status'] as string;
+      return mEnd < nowIso && mStatus !== 'cancelled';
+    }
+
+    // Check for source filter e.g. source = 'google_calendar' AND status != 'cancelled'
+    if (/source\s*=\s*'google_calendar'\s+AND\s+[a-zA-Z0-9_.]*status\s*!=\s*'cancelled'/i.test(whereClause)) {
+      return row['source'] === 'google_calendar' && row['status'] !== 'cancelled';
+    }
+
+    if (/source\s*=\s*'imported'\s+AND\s+[a-zA-Z0-9_.]*status\s*!=\s*'cancelled'/i.test(whereClause)) {
+      return row['source'] === 'imported' && row['status'] !== 'cancelled';
+    }
+
+    // Check for status != 'cancelled' standalone or with calendar joins
+    if (/status\s*!=\s*'cancelled'/i.test(whereClause) && !/LIKE/i.test(whereClause)) {
+      return row['status'] !== 'cancelled';
+    }
+
     // Check for upcoming alarms query: a.is_enabled = 1 AND a.status = 'pending' AND a.scheduled_time >= ?
     if (/a\.is_enabled\s*=\s*1\s+AND\s+a\.status\s*=\s*'pending'\s+AND\s+a\.scheduled_time\s*>=\s*\?/i.test(whereClause)) {
       const nowIso = params[0] as string;

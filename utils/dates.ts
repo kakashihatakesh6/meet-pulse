@@ -7,8 +7,9 @@ import {
   isYesterday as dateFnsIsYesterday,
   addDays,
   startOfWeek,
+  format,
 } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { MeetingStatus } from '../types/meeting';
 import { getDeviceTimezone, formatInTz } from './timezone';
 
@@ -209,6 +210,19 @@ export function formatTimeAgo(isoString?: string): string {
  */
 export function getWeekDates(baseDate: Date = new Date(), timezone?: string): Date[] {
   const tz = timezone || getDeviceTimezone();
-  const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 }); // Monday start
-  return Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
+  const dateStr = formatInTimeZone(baseDate, tz, 'yyyy-MM-dd');
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const localDate = new Date(year, month - 1, day);
+
+  const dayOfWeek = localDate.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(localDate);
+  monday.setDate(localDate.getDate() + diffToMonday);
+
+  return Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const dStr = format(d, 'yyyy-MM-dd');
+    return fromZonedTime(`${dStr}T12:00:00.000`, tz);
+  });
 }

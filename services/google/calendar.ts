@@ -87,10 +87,10 @@ export const GoogleCalendarService = {
   ): Promise<FetchEventsResponse> {
     const accessToken = await GoogleOAuthService.getValidAccessToken();
 
-    // Default window: 30 days in past to 90 days in future
+    // Default window: 365 days in past to 180 days in future
     const now = new Date();
-    const defaultTimeMin = subDays(now, 30).toISOString();
-    const defaultTimeMax = addDays(now, 90).toISOString();
+    const defaultTimeMin = subDays(now, 365).toISOString();
+    const defaultTimeMax = addDays(now, 180).toISOString();
 
     const allValidatedItems: GoogleCalendarEventItem[] = [];
     let currentPageToken: string | undefined = options.pageToken;
@@ -244,10 +244,35 @@ export const GoogleCalendarService = {
         ? 'cancelled'
         : 'upcoming'; // Will be calculated dynamically based on time
 
+    // Clean up summary / title
+    let title = event.summary?.trim() || '';
+    if (!title || /^[,.\-_:;/\\]+$/.test(title)) {
+      if (event.description) {
+        const cleanDesc = event.description.replace(/<[^>]*>/g, '').trim();
+        const firstLine = cleanDesc.split('\n')[0].trim();
+        if (firstLine && firstLine.length > 1 && !firstLine.toLowerCase().startsWith('event name')) {
+          title = firstLine;
+        } else if (cleanDesc.includes('Event Name\n') || cleanDesc.includes('Event Name:')) {
+          const nameMatch = cleanDesc.match(/Event Name[:\s]+([^\n]+)/i);
+          if (nameMatch && nameMatch[1]) {
+            title = nameMatch[1].trim();
+          }
+        }
+      }
+      if (!title || /^[,.\-_:;/\\]+$/.test(title)) {
+        if (event.location && !event.location.startsWith('http')) {
+          title = event.location.split(',')[0].trim();
+        }
+      }
+      if (!title || /^[,.\-_:;/\\]+$/.test(title)) {
+        title = extractedLink?.platform === 'zoom' ? 'Zoom Meeting' : extractedLink?.platform === 'google_meet' ? 'Google Meet' : 'Calendar Event';
+      }
+    }
+
     return {
       googleEventId: event.id,
       calendarId,
-      title: event.summary || '(No title)',
+      title,
       description: event.description,
       startTime: startIso,
       endTime: endIso,

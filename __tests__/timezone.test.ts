@@ -3,6 +3,7 @@ import {
   parseAllDayBounds,
   formatInTz,
   getDayBoundariesInTz,
+  getWeekBoundariesInTz,
 } from '../utils/timezone';
 
 describe('Timezone Utilities', () => {
@@ -63,6 +64,16 @@ describe('Timezone Utilities', () => {
       const boundaries = getDayBoundariesInTz(new Date('2026-09-25T12:00:00Z'), 'America/New_York');
       expect(boundaries.startIso).toBe('2026-09-25T04:00:00.000Z');
       expect(boundaries.endIso).toBe('2026-09-26T03:59:59.999Z');
+    });
+  });
+
+  describe('getWeekBoundariesInTz', () => {
+    it('returns Monday start to Sunday end in Asia/Kolkata', () => {
+      // Oct 8, 2026 is Thursday. Week is Oct 5 (Mon) to Oct 11 (Sun).
+      // Oct 5 00:00 IST = Oct 4 18:30 UTC. Oct 11 23:59:59.999 IST = Oct 11 18:29:59.999 UTC.
+      const boundaries = getWeekBoundariesInTz(new Date('2026-10-08T10:00:00Z'), 'Asia/Kolkata');
+      expect(boundaries.startIso).toBe('2026-10-04T18:30:00.000Z');
+      expect(boundaries.endIso).toBe('2026-10-11T18:29:59.999Z');
     });
   });
 });

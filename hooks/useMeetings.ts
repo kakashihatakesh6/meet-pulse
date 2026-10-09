@@ -24,10 +24,26 @@ export function useTodayMeetings(timezone?: string) {
   });
 }
 
-export function useUpcomingMeetings(limit: number = 20) {
+export function useUpcomingMeetings(limit: number = 50) {
   return useQuery({
     queryKey: MEETINGS_QUERY_KEYS.upcoming(limit),
     queryFn: () => MeetingsRepository.getUpcomingMeetings(limit),
+    staleTime: 1000 * 30,
+  });
+}
+
+export function usePastMeetings(limit: number = 50) {
+  return useQuery({
+    queryKey: ['meetings', 'past', limit] as const,
+    queryFn: () => MeetingsRepository.getPastMeetings(limit),
+    staleTime: 1000 * 30,
+  });
+}
+
+export function useAllMeetings(limit: number = 250) {
+  return useQuery({
+    queryKey: ['meetings', 'all_list', limit] as const,
+    queryFn: () => MeetingsRepository.getAllMeetings(limit),
     staleTime: 1000 * 30,
   });
 }

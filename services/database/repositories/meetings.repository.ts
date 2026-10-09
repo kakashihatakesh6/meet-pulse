@@ -372,6 +372,76 @@ export const MeetingsRepository = {
   },
 
   /**
+   * Retrieves past meetings ended before now in reverse chronological order
+   */
+  async getPastMeetings(limit: number = 50): Promise<MeetingWithAlarms[]> {
+    const db = await getDatabase();
+    const nowIso = new Date().toISOString();
+
+    const meetingRows = await db.getAllAsync<DbMeetingRow>(
+      `SELECT m.* FROM meetings m
+       LEFT JOIN calendars c ON (m.calendar_id = c.google_calendar_id OR m.calendar_id = c.id)
+       WHERE (c.is_enabled IS NULL OR c.is_enabled = 1 OR c.primary_cal = 1)
+         AND m.end_time < ?
+         AND m.status != 'cancelled'
+       ORDER BY m.start_time DESC
+       LIMIT ?`,
+      [nowIso, limit]
+    );
+
+    const seenIds = new Set<string>();
+    const result: MeetingWithAlarms[] = [];
+    for (const row of meetingRows) {
+      if (seenIds.has(row.id)) continue;
+      seenIds.add(row.id);
+      const alarmRows = await db.getAllAsync<DbAlarmRow>(
+        'SELECT * FROM alarms WHERE meeting_id = ? ORDER BY offset_minutes ASC',
+        [row.id]
+      );
+      result.push({
+        ...mapRowToMeeting(row),
+        alarms: alarmRows.map(mapRowToAlarm),
+      });
+    }
+
+    return result;
+  },
+
+  /**
+   * Retrieves all synchronized meetings sorted by start time
+   */
+  async getAllMeetings(limit: number = 250): Promise<MeetingWithAlarms[]> {
+    const db = await getDatabase();
+
+    const meetingRows = await db.getAllAsync<DbMeetingRow>(
+      `SELECT m.* FROM meetings m
+       LEFT JOIN calendars c ON (m.calendar_id = c.google_calendar_id OR m.calendar_id = c.id)
+       WHERE (c.is_enabled IS NULL OR c.is_enabled = 1 OR c.primary_cal = 1)
+         AND m.status != 'cancelled'
+       ORDER BY m.start_time ASC
+       LIMIT ?`,
+      [limit]
+    );
+
+    const seenIds = new Set<string>();
+    const result: MeetingWithAlarms[] = [];
+    for (const row of meetingRows) {
+      if (seenIds.has(row.id)) continue;
+      seenIds.add(row.id);
+      const alarmRows = await db.getAllAsync<DbAlarmRow>(
+        'SELECT * FROM alarms WHERE meeting_id = ? ORDER BY offset_minutes ASC',
+        [row.id]
+      );
+      result.push({
+        ...mapRowToMeeting(row),
+        alarms: alarmRows.map(mapRowToAlarm),
+      });
+    }
+
+    return result;
+  },
+
+  /**
    * Retrieves meetings within a specific date range with optional source/calendar filters
    */
   async getMeetingsByDateRange(
@@ -414,7 +484,7 @@ export const MeetingsRepository = {
 
     const meetingRows = await db.getAllAsync<DbMeetingRow>(query, params);
     const seenIds = new Set<string>();
-    const result: MeetingWithAlarms[] = [];
+    let result: MeetingWithAlarms[] = [];
 
     for (const row of meetingRows) {
       if (seenIds.has(row.id)) continue;
@@ -427,6 +497,10 @@ export const MeetingsRepository = {
         ...mapRowToMeeting(row),
         alarms: alarmRows.map(mapRowToAlarm),
       });
+    }
+
+    if (filter?.status && filter.status.length > 0) {
+      result = result.filter((m) => filter.status!.includes(m.status));
     }
 
     return result;
@@ -547,21 +621,33 @@ export const MeetingsRepository = {
   /**
    * Total meeting count
    */
-  async getCounts(): Promise<{ total: number; today: number; google: number; imported: number }> {
+  async getCounts(): Promise<{
+    total: number;
+    today: number;
+    upcoming: number;
+    past: number;
+    google: number;
+    imported: number;
+  }> {
     const db = await getDatabase();
-    const totalRow = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM meetings');
-    const googleRow = await db.getFirstAsync<{ count: number }>("SELECT COUNT(*) as count FROM meetings WHERE source = 'google_calendar'");
-    const importedRow = await db.getFirstAsync<{ count: number }>("SELECT COUNT(*) as count FROM meetings WHERE source = 'imported'");
+    const nowIso = new Date().toISOString();
+    const totalRow = await db.getFirstAsync<{ count: number }>("SELECT COUNT(*) as count FROM meetings WHERE status != 'cancelled'");
+    const googleRow = await db.getFirstAsync<{ count: number }>("SELECT COUNT(*) as count FROM meetings WHERE source = 'google_calendar' AND status != 'cancelled'");
+    const importedRow = await db.getFirstAsync<{ count: number }>("SELECT COUNT(*) as count FROM meetings WHERE source = 'imported' AND status != 'cancelled'");
+    const upcomingRow = await db.getFirstAsync<{ count: number }>("SELECT COUNT(*) as count FROM meetings WHERE end_time >= ? AND status != 'cancelled'", [nowIso]);
+    const pastRow = await db.getFirstAsync<{ count: number }>("SELECT COUNT(*) as count FROM meetings WHERE end_time < ? AND status != 'cancelled'", [nowIso]);
 
     const bounds = getDayBoundariesInTz(new Date());
     const todayRow = await db.getFirstAsync<{ count: number }>(
-      'SELECT COUNT(*) as count FROM meetings WHERE start_time <= ? AND end_time >= ?',
-      [bounds.endIso, bounds.startIso]
+      "SELECT COUNT(*) as count FROM meetings WHERE ((start_time <= ? AND end_time >= ?) OR (start_time >= ? AND start_time <= ?) OR (end_time >= ? AND end_time <= ?)) AND status != 'cancelled'",
+      [bounds.endIso, bounds.startIso, bounds.startIso, bounds.endIso, bounds.startIso, bounds.endIso]
     );
 
     return {
       total: totalRow?.count || 0,
       today: todayRow?.count || 0,
+      upcoming: upcomingRow?.count || 0,
+      past: pastRow?.count || 0,
       google: googleRow?.count || 0,
       imported: importedRow?.count || 0,
     };
