@@ -44,11 +44,6 @@ export const ALARM_PRESETS: AlarmPresetOption[] = [
   },
 ];
 
-export const NOTIFICATION_CHANNELS = {
-  HIGH_PRIORITY_ALARMS: 'meeting-high-priority-alarms',
-  STANDARD_REMINDERS: 'meeting-standard-reminders',
-};
-
 export function formatAlarmOffsetLabel(minutes: number): string {
   if (minutes === 0) return 'At meeting time';
   if (minutes < 60) return `${minutes} min before`;

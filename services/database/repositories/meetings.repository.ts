@@ -110,20 +110,22 @@ function mapRowToAlarm(row: DbAlarmRow): Alarm {
 
 export const MeetingsRepository = {
   /**
-   * Retrieves a single meeting by internal UUID
+   * Retrieves a single meeting by internal UUID or external Google Event ID
    */
   async getById(id: string): Promise<MeetingWithAlarms | null> {
+    if (!id) return null;
+    const cleanId = decodeURIComponent(String(id).trim());
     const db = await getDatabase();
     const meetingRow = await db.getFirstAsync<DbMeetingRow>(
-      'SELECT * FROM meetings WHERE id = ?',
-      [id]
+      'SELECT * FROM meetings WHERE id = ? OR google_event_id = ?',
+      [cleanId, cleanId]
     );
 
     if (!meetingRow) return null;
 
     const alarmRows = await db.getAllAsync<DbAlarmRow>(
       'SELECT * FROM alarms WHERE meeting_id = ? ORDER BY offset_minutes ASC',
-      [id]
+      [meetingRow.id]
     );
 
     const meeting = mapRowToMeeting(meetingRow);

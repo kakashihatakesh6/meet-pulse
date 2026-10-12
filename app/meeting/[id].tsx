@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
   useMeetingDetails,
@@ -24,7 +24,7 @@ import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { AlarmSelector } from '../../components/AlarmSelector';
 import { MeetingStatusBadge } from '../../components/MeetingStatusBadge';
-import { LoadingState } from '../../components/LoadingState';
+import { MeetingDetailsSkeleton } from '../../components/Skeleton';
 import { formatMeetingTime, formatDuration, calculateDurationMinutes } from '../../utils/dates';
 import { formatInTz } from '../../utils/timezone';
 import { getPlatformDisplayInfo } from '../../utils/meeting-url';
@@ -33,18 +33,29 @@ import { Alarm } from '../../types/alarm';
 import { Attendee } from '../../types/meeting';
 
 export default function MeetingDetailsScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const meetingId = rawId ? decodeURIComponent(rawId) : '';
   const router = useRouter();
   const { colors } = useTheme();
 
-  const { data: meeting, isLoading, refetch } = useMeetingDetails(id);
+  const { data: meeting, isLoading, refetch } = useMeetingDetails(meetingId);
   const deleteMeeting = useDeleteMeeting();
   const configureAlarms = useConfigureMeetingAlarms();
   const toggleAlarm = useToggleAlarm();
 
   const [isAlarmModalVisible, setIsAlarmModalVisible] = useState(false);
 
-  if (isLoading || !meeting) {
+  // Refetch meeting details whenever this screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (meetingId) {
+        refetch();
+      }
+    }, [meetingId, refetch])
+  );
+
+  if (isLoading) {
     return (
       <SafeAreaView
         style={[styles.safeArea, { backgroundColor: colors.background }]}
@@ -53,8 +64,42 @@ export default function MeetingDetailsScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            Meeting Details
+          </Text>
+          <View style={{ width: 40 }} />
         </View>
-        <LoadingState count={3} />
+        <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+          <MeetingDetailsSkeleton />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  if (!meeting) {
+    return (
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: colors.background }]}
+      >
+        <View style={styles.headerBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            Meeting Details
+          </Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Ionicons name="calendar-outline" size={48} color={colors.textMuted} style={{ marginBottom: 12 }} />
+          <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 8, textAlign: 'center' }}>
+            Meeting Not Found
+          </Text>
+          <Text style={{ fontSize: 14, color: colors.textMuted, textAlign: 'center', marginBottom: 20 }}>
+            This meeting could not be found or may have been removed.
+          </Text>
+          <Button title="Go Back" onPress={() => router.back()} variant="primary" />
+        </View>
       </SafeAreaView>
     );
   }

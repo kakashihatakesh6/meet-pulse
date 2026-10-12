@@ -45,10 +45,11 @@ export function getGoogleClientId(): string {
  */
 export function getRedirectUri(): string {
   if (Platform.OS === 'web') {
-    return AuthSession.makeRedirectUri();
+    return process.env.EXPO_PUBLIC_GOOGLE_REDIRECT_URI || AuthSession.makeRedirectUri();
   }
-  if (process.env.EXPO_PUBLIC_GOOGLE_REDIRECT_URI) {
-    return process.env.EXPO_PUBLIC_GOOGLE_REDIRECT_URI;
+  const envUri = process.env.EXPO_PUBLIC_GOOGLE_REDIRECT_URI;
+  if (envUri && !envUri.includes('localhost') && !envUri.includes('127.0.0.1')) {
+    return envUri;
   }
   return AuthSession.makeRedirectUri({
     scheme: 'meetpulse',

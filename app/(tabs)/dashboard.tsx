@@ -19,7 +19,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { Header } from '../../components/Header';
 import { MeetingCard } from '../../components/MeetingCard';
 import { AlarmSelector } from '../../components/AlarmSelector';
-import { LoadingState } from '../../components/LoadingState';
+import { LoadingState, DashboardSkeleton } from '../../components/LoadingState';
 import { EmptyState } from '../../components/EmptyState';
 import { Card } from '../../components/Card';
 import { MeetingWithAlarms } from '../../types/meeting';
@@ -115,316 +115,329 @@ export default function DashboardScreen() {
         {/* Top Header */}
         <Header showUserGreeting showSyncIndicator />
 
-        {/* Quick Actions Row */}
-        <View style={styles.quickActionsRow}>
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={() => sync({ forceFullSync: true })}
-            disabled={isSyncing}
-            style={[
-              styles.actionButton,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.surfaceBorder,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.actionIconBg,
-                { backgroundColor: colors.primaryLight },
-              ]}
-            >
-              <Ionicons name="sync" size={18} color={colors.primary} />
-            </View>
-            <Text style={[styles.actionButtonText, { color: colors.text }]}>
-              {isSyncing ? 'Syncing...' : 'Sync Calendar'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={() => router.push('/import')}
-            style={[
-              styles.actionButton,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.surfaceBorder,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.actionIconBg,
-                { backgroundColor: colors.accentLight },
-              ]}
-            >
-              <Ionicons
-                name="cloud-upload"
-                size={18}
-                color={colors.accent}
-              />
-            </View>
-            <Text style={[styles.actionButtonText, { color: colors.text }]}>
-              Import File
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Next Meeting Spotlight Card */}
-        {nextMeeting ? (
-          <View style={styles.sectionContainer}>
-            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-              NEXT UP
-            </Text>
-            <Card
-              style={[
-                styles.spotlightCard,
-                { borderColor: colors.primary, borderWidth: 1.5 },
-              ]}
-            >
-              <View style={styles.spotlightHeader}>
-                <View style={styles.spotlightTimeGroup}>
-                  <Ionicons
-                    name="flash"
-                    size={16}
-                    color={colors.primary}
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text
-                    style={[styles.spotlightRelative, { color: colors.primary }]}
-                  >
-                    {getRelativeTimeLabel(nextMeeting.startTime, nextMeeting.endTime).label}
-                  </Text>
-                </View>
-                <Text
-                  style={[styles.spotlightTime, { color: colors.textMuted }]}
-                >
-                  {formatMeetingTime(
-                    nextMeeting.startTime,
-                    nextMeeting.endTime,
-                    nextMeeting.timezone,
-                    nextMeeting.isAllDay
-                  )}
-                </Text>
-              </View>
-
-              <Text
-                style={[styles.spotlightTitle, { color: colors.text }]}
-                numberOfLines={2}
+        {isLoadingMeetings && todayMeetings.length === 0 && upcomingMeetings.length === 0 ? (
+          <DashboardSkeleton />
+        ) : (
+          <>
+            {/* Quick Actions Row */}
+            <View style={styles.quickActionsRow}>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => sync({ forceFullSync: true })}
+                disabled={isSyncing}
+                style={[
+                  styles.actionButton,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.surfaceBorder,
+                  },
+                ]}
               >
-                {nextMeeting.title}
-              </Text>
-
-              <View style={styles.spotlightBottom}>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => setActiveMeetingForAlarm(nextMeeting)}
+                <View
                   style={[
-                    styles.spotlightAlarmBtn,
-                    { backgroundColor: colors.surfaceSubtle },
+                    styles.actionIconBg,
+                    { backgroundColor: colors.primaryLight },
+                  ]}
+                >
+                  <Ionicons name="sync" size={18} color={colors.primary} />
+                </View>
+                <Text style={[styles.actionButtonText, { color: colors.text }]}>
+                  {isSyncing ? 'Syncing...' : 'Sync Calendar'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => router.push('/import')}
+                style={[
+                  styles.actionButton,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.surfaceBorder,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.actionIconBg,
+                    { backgroundColor: colors.accentLight },
                   ]}
                 >
                   <Ionicons
-                    name={
-                      nextMeeting.alarms.some((a: Alarm) => a.isEnabled)
-                        ? 'notifications'
-                        : 'notifications-outline'
-                    }
-                    size={14}
-                    color={colors.primary}
-                    style={{ marginRight: 4 }}
+                    name="cloud-upload"
+                    size={18}
+                    color={colors.accent}
                   />
-                  <Text
-                    style={[styles.spotlightAlarmText, { color: colors.text }]}
-                  >
-                    {nextMeeting.alarms.filter((a: Alarm) => a.isEnabled).length > 0
-                      ? `${nextMeeting.alarms.filter((a: Alarm) => a.isEnabled).length} alarm(s)`
-                      : 'Add Alarm'}
-                  </Text>
-                </TouchableOpacity>
-
-                {nextMeeting.meetingUrl && (
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() =>
-                      Linking.openURL(nextMeeting.meetingUrl!).catch(() => {})
-                    }
-                    style={[
-                      styles.spotlightJoinBtn,
-                      { backgroundColor: colors.primary },
-                    ]}
-                  >
-                    <Ionicons
-                      name="videocam"
-                      size={14}
-                      color="#FFFFFF"
-                      style={{ marginRight: 4 }}
-                    />
-                    <Text style={styles.spotlightJoinText}>Join Now</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </Card>
-          </View>
-        ) : null}
-
-        {/* Stats Metrics Row */}
-        <View style={styles.statsRow}>
-          <View
-            style={[
-              styles.statCard,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.surfaceBorder,
-              },
-            ]}
-          >
-            <Text style={[styles.statNumber, { color: colors.primary }]}>
-              {todayMeetings.length}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textMuted }]}>
-              Today's
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.statCard,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.surfaceBorder,
-              },
-            ]}
-          >
-            <Text style={[styles.statNumber, { color: colors.accent }]}>
-              {upcomingMeetings.length}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textMuted }]}>
-              Upcoming
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.statCard,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.surfaceBorder,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.statNumber,
-                {
-                  color:
-                    meetingsWithoutAlarms.length > 0
-                      ? colors.warning
-                      : colors.success,
-                },
-              ]}
-            >
-              {meetingsWithoutAlarms.length}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textMuted }]}>
-              No Alarms
-            </Text>
-          </View>
-        </View>
-
-        {/* Today's Meetings List */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-              TODAY'S SCHEDULE ({todayMeetings.length})
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.push('/(tabs)/calendar')}
-              style={{ paddingVertical: 2 }}
-            >
-              <Text style={[styles.viewAllText, { color: colors.primary }]}>
-                View Calendar →
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {isLoadingMeetings && todayMeetings.length === 0 ? (
-            <LoadingState count={2} />
-          ) : todayMeetings.length === 0 ? (
-            <View
-              style={[
-                styles.emptyTodayBanner,
-                {
-                  backgroundColor: colors.surfaceSubtle,
-                  borderColor: colors.surfaceBorder,
-                },
-              ]}
-            >
-              <Ionicons
-                name="checkmark-circle"
-                size={22}
-                color={colors.success}
-                style={{ marginRight: 10 }}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.emptyTodayTitle, { color: colors.text }]}>
-                  Calendar clear for today
-                </Text>
-                <Text style={[styles.emptyTodayDesc, { color: colors.textMuted }]}>
-                  No meetings remaining today. Check upcoming events below.
-                </Text>
-              </View>
-            </View>
-          ) : (
-            todayMeetings.map((meeting, index) => (
-              <MeetingCard
-                key={`today-${meeting.id}-${index}`}
-                meeting={meeting}
-                onAlarmPress={(m) => setActiveMeetingForAlarm(m)}
-              />
-            ))
-          )}
-        </View>
-
-        {/* Upcoming Meetings List */}
-        {upcomingMeetings.length > 0 && (
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-                UPCOMING SCHEDULE ({upcomingMeetings.length})
-              </Text>
-              <TouchableOpacity
-                onPress={() => router.push('/(tabs)/calendar')}
-                style={{ paddingVertical: 2 }}
-              >
-                <Text style={[styles.viewAllText, { color: colors.primary }]}>
-                  All →
+                </View>
+                <Text style={[styles.actionButtonText, { color: colors.text }]}>
+                  Import File
                 </Text>
               </TouchableOpacity>
             </View>
 
-            {upcomingMeetings.slice(0, 5).map((meeting, index) => (
-              <MeetingCard
-                key={`upcoming-${meeting.id}-${index}`}
-                meeting={meeting}
-                onAlarmPress={(m) => setActiveMeetingForAlarm(m)}
-              />
-            ))}
-          </View>
-        )}
+            {/* Next Meeting Spotlight Card */}
+            {nextMeeting ? (
+              <View style={styles.sectionContainer}>
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+                  NEXT UP
+                </Text>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => router.push(`/meeting/${nextMeeting.id}`)}
+                >
+                  <Card
+                    style={[
+                      styles.spotlightCard,
+                      { borderColor: colors.primary, borderWidth: 1.5 },
+                    ]}
+                  >
+                    <View style={styles.spotlightHeader}>
+                      <View style={styles.spotlightTimeGroup}>
+                        <Ionicons
+                          name="flash"
+                          size={16}
+                          color={colors.primary}
+                          style={{ marginRight: 4 }}
+                        />
+                        <Text
+                          style={[styles.spotlightRelative, { color: colors.primary }]}
+                        >
+                          {getRelativeTimeLabel(nextMeeting.startTime, nextMeeting.endTime).label}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[styles.spotlightTime, { color: colors.textMuted }]}
+                      >
+                        {formatMeetingTime(
+                          nextMeeting.startTime,
+                          nextMeeting.endTime,
+                          nextMeeting.timezone,
+                          nextMeeting.isAllDay
+                        )}
+                      </Text>
+                    </View>
 
-        {/* Empty State when zero total meetings exist */}
-        {!isLoadingMeetings && todayMeetings.length === 0 && upcomingMeetings.length === 0 && (
-          <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
-            <EmptyState
-              icon="calendar-outline"
-              title="No Calendar Meetings Found"
-              description="Sync your Google Calendar or import an Excel/CSV schedule to view and manage meeting alarms."
-              actionLabel="Sync Google Calendar"
-              onAction={() => sync({ forceFullSync: true })}
-            />
-          </View>
+                    <Text
+                      style={[styles.spotlightTitle, { color: colors.text }]}
+                      numberOfLines={2}
+                    >
+                      {nextMeeting.title}
+                    </Text>
+
+                    <View style={styles.spotlightBottom}>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          setActiveMeetingForAlarm(nextMeeting);
+                        }}
+                        style={[
+                          styles.spotlightAlarmBtn,
+                          { backgroundColor: colors.surfaceSubtle },
+                        ]}
+                      >
+                        <Ionicons
+                          name={
+                            nextMeeting.alarms.some((a: Alarm) => a.isEnabled)
+                              ? 'notifications'
+                              : 'notifications-outline'
+                          }
+                          size={14}
+                          color={colors.primary}
+                          style={{ marginRight: 4 }}
+                        />
+                        <Text
+                          style={[styles.spotlightAlarmText, { color: colors.text }]}
+                        >
+                          {nextMeeting.alarms.filter((a: Alarm) => a.isEnabled).length > 0
+                            ? `${nextMeeting.alarms.filter((a: Alarm) => a.isEnabled).length} alarm(s)`
+                            : 'Add Alarm'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {nextMeeting.meetingUrl && (
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            Linking.openURL(nextMeeting.meetingUrl!).catch(() => {});
+                          }}
+                          style={[
+                            styles.spotlightJoinBtn,
+                            { backgroundColor: colors.primary },
+                          ]}
+                        >
+                          <Ionicons
+                            name="videocam"
+                            size={14}
+                            color="#FFFFFF"
+                            style={{ marginRight: 4 }}
+                          />
+                          <Text style={styles.spotlightJoinText}>Join Now</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </Card>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            {/* Stats Metrics Row */}
+            <View style={styles.statsRow}>
+              <View
+                style={[
+                  styles.statCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.surfaceBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.statNumber, { color: colors.primary }]}>
+                  {todayMeetings.length}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>
+                  Today's
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.statCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.surfaceBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.statNumber, { color: colors.accent }]}>
+                  {upcomingMeetings.length}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>
+                  Upcoming
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.statCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.surfaceBorder,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statNumber,
+                    {
+                      color:
+                        meetingsWithoutAlarms.length > 0
+                          ? colors.warning
+                          : colors.success,
+                    },
+                  ]}
+                >
+                  {meetingsWithoutAlarms.length}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>
+                  No Alarms
+                </Text>
+              </View>
+            </View>
+
+            {/* Today's Meetings List */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+                  TODAY'S SCHEDULE ({todayMeetings.length})
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push('/(tabs)/calendar')}
+                  style={{ paddingVertical: 2 }}
+                >
+                  <Text style={[styles.viewAllText, { color: colors.primary }]}>
+                    View Calendar →
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {todayMeetings.length === 0 ? (
+                <View
+                  style={[
+                    styles.emptyTodayBanner,
+                    {
+                      backgroundColor: colors.surfaceSubtle,
+                      borderColor: colors.surfaceBorder,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={22}
+                    color={colors.success}
+                    style={{ marginRight: 10 }}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.emptyTodayTitle, { color: colors.text }]}>
+                      Calendar clear for today
+                    </Text>
+                    <Text style={[styles.emptyTodayDesc, { color: colors.textMuted }]}>
+                      No meetings remaining today. Check upcoming events below.
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                todayMeetings.map((meeting, index) => (
+                  <MeetingCard
+                    key={`today-${meeting.id}-${index}`}
+                    meeting={meeting}
+                    onAlarmPress={(m) => setActiveMeetingForAlarm(m)}
+                  />
+                ))
+              )}
+            </View>
+
+            {/* Upcoming Meetings List */}
+            {upcomingMeetings.length > 0 && (
+              <View style={styles.sectionContainer}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+                    UPCOMING SCHEDULE ({upcomingMeetings.length})
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => router.push('/(tabs)/calendar')}
+                    style={{ paddingVertical: 2 }}
+                  >
+                    <Text style={[styles.viewAllText, { color: colors.primary }]}>
+                      All →
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {upcomingMeetings.slice(0, 5).map((meeting, index) => (
+                  <MeetingCard
+                    key={`upcoming-${meeting.id}-${index}`}
+                    meeting={meeting}
+                    onAlarmPress={(m) => setActiveMeetingForAlarm(m)}
+                  />
+                ))}
+              </View>
+            )}
+
+            {/* Empty State when zero total meetings exist */}
+            {todayMeetings.length === 0 && upcomingMeetings.length === 0 && (
+              <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
+                <EmptyState
+                  icon="calendar-outline"
+                  title="No Calendar Meetings Found"
+                  description="Sync your Google Calendar or import an Excel/CSV schedule to view and manage meeting alarms."
+                  actionLabel="Sync Google Calendar"
+                  onAction={() => sync({ forceFullSync: true })}
+                />
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
 

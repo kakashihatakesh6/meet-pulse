@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlarmsRepository } from '../services/database/repositories/alarms.repository';
-import { NotificationService } from '../services/notifications/notification.service';
+import { AlarmService } from '../services/alarms/alarm.service';
 import { Meeting } from '../types/meeting';
 import { MEETINGS_QUERY_KEYS } from './useMeetings';
 
@@ -29,7 +29,7 @@ export function useConfigureMeetingAlarms() {
       meeting: Meeting;
       offsetMinutesList: number[];
     }) => {
-      return NotificationService.configureMeetingAlarms(meeting, offsetMinutesList);
+      return AlarmService.configureMeetingAlarms(meeting, offsetMinutesList);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ALARMS_QUERY_KEYS.all });
@@ -60,21 +60,18 @@ export function useToggleAlarm() {
       if (!alarm) throw new Error('Alarm not found');
 
       if (!isEnabled) {
-        // Cancel notification
         if (alarm.notificationId) {
-          await NotificationService.cancelNotification(alarm.notificationId);
+          await AlarmService.cancelAlarm(alarm.notificationId);
         }
         await AlarmsRepository.update(alarmId, {
           isEnabled: false,
           notificationId: undefined,
         });
       } else if (meeting && offsetMinutes !== undefined) {
-        // Reschedule
-        const { notificationId, scheduledTime } =
-          await NotificationService.scheduleAlarmNotification(meeting, offsetMinutes);
+        const { scheduledTime } =
+          await AlarmService.scheduleAlarm(meeting, offsetMinutes);
         await AlarmsRepository.update(alarmId, {
           isEnabled: true,
-          notificationId,
           scheduledTime,
         });
       } else {

@@ -4,7 +4,7 @@ import { CalendarsRepository } from '../database/repositories/calendars.reposito
 import { MeetingsRepository } from '../database/repositories/meetings.repository';
 import { SyncRepository } from '../database/repositories/sync.repository';
 import { SettingsRepository } from '../database/repositories/settings.repository';
-import { NotificationService } from '../notifications/notification.service';
+import { AlarmService } from '../alarms/alarm.service';
 import { SyncResult } from '../../types/sync';
 import { logger } from '../../utils/logger';
 
@@ -146,7 +146,7 @@ export const CalendarSyncService = {
                 await MeetingsRepository.updateMeeting(existingMeeting.id, {
                   status: 'cancelled',
                 });
-                await NotificationService.cancelAllAlarmsForMeeting(existingMeeting.id);
+                await AlarmService.cancelAllAlarmsForMeeting(existingMeeting.id);
                 deletedCount++;
               }
               continue;
@@ -172,8 +172,8 @@ export const CalendarSyncService = {
               updatedCount++;
 
               if (hasTimeChanged) {
-                // Reschedule notifications for updated times
-                await NotificationService.rescheduleMeetingAlarms(updatedMeeting);
+                // Reschedule alarms for updated times
+                await AlarmService.rescheduleMeetingAlarms(updatedMeeting);
               }
             } else {
               // New Meeting
@@ -182,7 +182,7 @@ export const CalendarSyncService = {
 
               // Auto-schedule default alarms
               if (settings.enableNotifications && defaultOffsets.length > 0) {
-                const alarms = await NotificationService.configureMeetingAlarms(
+                const alarms = await AlarmService.configureMeetingAlarms(
                   createdMeeting,
                   defaultOffsets
                 );

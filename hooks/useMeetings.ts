@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MeetingsRepository } from '../services/database/repositories/meetings.repository';
-import { NotificationService } from '../services/notifications/notification.service';
+import { AlarmService } from '../services/alarms/alarm.service';
 import { MeetingWithAlarms, MeetingFilterOptions } from '../types/meeting';
 import { getDeviceTimezone } from '../utils/timezone';
 
@@ -62,10 +62,11 @@ export function useDateRangeMeetings(
 }
 
 export function useMeetingDetails(meetingId?: string) {
+  const cleanId = meetingId ? decodeURIComponent(String(meetingId).trim()) : '';
   return useQuery({
-    queryKey: MEETINGS_QUERY_KEYS.detail(meetingId || ''),
-    queryFn: () => (meetingId ? MeetingsRepository.getById(meetingId) : null),
-    enabled: !!meetingId,
+    queryKey: MEETINGS_QUERY_KEYS.detail(cleanId),
+    queryFn: () => (cleanId ? MeetingsRepository.getById(cleanId) : null),
+    enabled: !!cleanId,
   });
 }
 
@@ -90,7 +91,7 @@ export function useDeleteMeeting() {
 
   return useMutation({
     mutationFn: async (meetingId: string) => {
-      await NotificationService.cancelAllAlarmsForMeeting(meetingId);
+      await AlarmService.cancelAllAlarmsForMeeting(meetingId);
       await MeetingsRepository.deleteImportedMeeting(meetingId);
       return meetingId;
     },

@@ -1,6 +1,6 @@
 import { subMinutes, parseISO } from 'date-fns';
 import { formatAlarmOffsetLabel } from '../constants/alarms';
-import { NotificationService } from '../services/notifications/notification.service';
+import { AlarmService } from '../services/alarms/alarm.service';
 import { Meeting } from '../types/meeting';
 
 describe('Alarm Calculations & Notifications', () => {
@@ -34,13 +34,13 @@ describe('Alarm Calculations & Notifications', () => {
 
   describe('buildNotificationContent', () => {
     it('generates correct titles based on offsetMinutes', () => {
-      const atStart = NotificationService.buildNotificationContent(mockMeeting, 0);
+      const atStart = AlarmService.buildAlarmContent(mockMeeting, 0);
       expect(atStart.title).toBe('⏰ Frontend Interview is starting now');
 
-      const fifteenMin = NotificationService.buildNotificationContent(mockMeeting, 15);
+      const fifteenMin = AlarmService.buildAlarmContent(mockMeeting, 15);
       expect(fifteenMin.title).toBe('🔔 Frontend Interview starts in 15 minutes');
 
-      const oneHour = NotificationService.buildNotificationContent(mockMeeting, 60);
+      const oneHour = AlarmService.buildAlarmContent(mockMeeting, 60);
       expect(oneHour.title).toBe('🔔 Frontend Interview starts in 1 hour');
     });
 

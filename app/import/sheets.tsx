@@ -20,6 +20,7 @@ import { GoogleDriveSpreadsheet, SpreadsheetParseResult } from '../../types/impo
 import { useTheme } from '../../hooks/useTheme';
 import { Card } from '../../components/Card';
 import { EmptyState } from '../../components/EmptyState';
+import { SheetsPickerSkeleton } from '../../components/Skeleton';
 import { formatInTz } from '../../utils/timezone';
 import { logger } from '../../utils/logger';
 
@@ -135,13 +136,13 @@ export default function GoogleSheetsPickerScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      {isLoading || isFetchingValues ? (
+      {isLoading ? (
+        <SheetsPickerSkeleton />
+      ) : isFetchingValues ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textMuted }]}>
-            {isFetchingValues
-              ? 'Loading spreadsheet contents...'
-              : 'Connecting to Google Drive...'}
+            Loading spreadsheet contents...
           </Text>
         </View>
       ) : selectedSheetMetadata ? (

@@ -23,13 +23,12 @@ import { useTheme } from '../../hooks/useTheme';
 import { Header } from '../../components/Header';
 import { MeetingList } from '../../components/MeetingList';
 import { AlarmSelector } from '../../components/AlarmSelector';
-import { MeetingWithAlarms, MeetingSource } from '../../types/meeting';
+import { MeetingWithAlarms } from '../../types/meeting';
 import { useAuthStore } from '../../store/auth.store';
 import { getWeekDates } from '../../utils/dates';
 import { getDayBoundariesInTz, getWeekBoundariesInTz, formatInTz, getDeviceTimezone } from '../../utils/timezone';
 
 type CalendarTab = 'today' | 'week' | 'upcoming' | 'past';
-type StatusFilter = 'all' | 'upcoming' | 'completed';
 
 export default function CalendarScreen() {
   const { colors, isDark } = useTheme();
@@ -37,8 +36,6 @@ export default function CalendarScreen() {
   const { sync, isSyncing } = useCalendarSync();
 
   const [activeTab, setActiveTab] = useState<CalendarTab>('today');
-  const [selectedStatus, setSelectedStatus] = useState<StatusFilter>('all');
-  const [selectedSource, setSelectedSource] = useState<MeetingSource | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   
   // Week view state
@@ -71,7 +68,7 @@ export default function CalendarScreen() {
     if (activeTab === 'upcoming') {
       return {
         startIso: now.toISOString(),
-        endIso: addDays(now, 365).toISOString(),
+        endIso: addDays(now, 3).toISOString(),
       };
     }
     if (activeTab === 'past') {
@@ -83,18 +80,11 @@ export default function CalendarScreen() {
     return getDayBoundariesInTz(now);
   }, [activeTab, selectedWeekDay, currentWeekBaseDate]);
 
-  // Query filtered meetings
-  const filterOptions = useMemo(() => {
-    return {
-      sources: selectedSource !== 'all' ? [selectedSource] : undefined,
-    };
-  }, [selectedSource]);
-
   const {
     data: rangeMeetings = [],
     isLoading: isLoadingRange,
     refetch: refetchRange,
-  } = useDateRangeMeetings(startIso, endIso, filterOptions);
+  } = useDateRangeMeetings(startIso, endIso);
 
   // Status breakdown counts
   const statusCounts = useMemo(() => {
@@ -114,26 +104,16 @@ export default function CalendarScreen() {
     };
   }, [rangeMeetings]);
 
-  // Filter by status (real-time computed)
+  // Filtered & sorted meetings
   const filteredMeetings = useMemo(() => {
-    let list = rangeMeetings;
-    if (selectedStatus === 'upcoming') {
-      list = rangeMeetings.filter(
-        (m) => m.status === 'upcoming' || m.status === 'in_progress'
-      );
-    } else if (selectedStatus === 'completed') {
-      list = rangeMeetings.filter((m) => m.status === 'completed');
-    }
-
     if (activeTab === 'past') {
       // Sort past meetings descending (most recent first)
-      return [...list].sort(
+      return [...rangeMeetings].sort(
         (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
       );
     }
-
-    return list;
-  }, [rangeMeetings, selectedStatus, activeTab]);
+    return rangeMeetings;
+  }, [rangeMeetings, activeTab]);
 
   // Refetch meetings when calendar screen gains focus
   useFocusEffect(
@@ -408,97 +388,6 @@ export default function CalendarScreen() {
             </View>
           )}
 
-          {/* Status & Source Filter Rows */}
-          <View style={styles.filterSection}>
-            {/* Status Filter Pills */}
-            <View style={styles.filterRow}>
-              <Text style={[styles.filterLabel, { color: colors.textMuted }]}>
-                Status:
-              </Text>
-              {(
-                [
-                  { key: 'all', label: 'All', count: statusCounts.all },
-                  { key: 'upcoming', label: 'Upcoming', count: statusCounts.upcoming },
-                  { key: 'completed', label: 'Ended', count: statusCounts.completed },
-                ] as const
-              ).map((item) => {
-                const isSelected = selectedStatus === item.key;
-                return (
-                  <TouchableOpacity
-                    key={item.key}
-                    onPress={() => setSelectedStatus(item.key)}
-                    style={[
-                      styles.filterPill,
-                      {
-                        backgroundColor: isSelected
-                          ? colors.primaryLight
-                          : colors.surfaceSubtle,
-                        borderColor: isSelected
-                          ? colors.primary
-                          : colors.surfaceBorder,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.filterPillText,
-                        {
-                          color: isSelected ? colors.primary : colors.textMuted,
-                          fontWeight: isSelected ? '700' : '500',
-                        },
-                      ]}
-                    >
-                      {item.label} ({item.count})
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Source Filter Pills */}
-            <View style={styles.filterRow}>
-              <Text style={[styles.filterLabel, { color: colors.textMuted }]}>
-                Source:
-              </Text>
-              {(['all', 'google_calendar', 'imported'] as const).map((source) => {
-                const isSelected = selectedSource === source;
-                return (
-                  <TouchableOpacity
-                    key={source}
-                    onPress={() => setSelectedSource(source)}
-                    style={[
-                      styles.filterPill,
-                      {
-                        backgroundColor: isSelected
-                          ? colors.primaryLight
-                          : colors.surfaceSubtle,
-                        borderColor: isSelected
-                          ? colors.primary
-                          : colors.surfaceBorder,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.filterPillText,
-                        {
-                          color: isSelected ? colors.primary : colors.textMuted,
-                          fontWeight: isSelected ? '700' : '500',
-                        },
-                      ]}
-                    >
-                      {source === 'all'
-                        ? 'All'
-                        : source === 'google_calendar'
-                        ? 'Google Calendar'
-                        : 'Imported'}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
           {/* Today Quick Overview Bar */}
           {activeTab === 'today' && rangeMeetings.length > 0 && (
             <View
@@ -518,7 +407,7 @@ export default function CalendarScreen() {
               />
               <Text style={[styles.todayOverviewText, { color: colors.text }]}>
                 <Text style={{ fontWeight: '700' }}>
-                  {rangeMeetings.length} Meeting{rangeMeetings.length === 1 ? '' : 's'} Today
+                  {rangeMeetings.length} Event{rangeMeetings.length === 1 ? '' : 's'} Today
                 </Text>
                 {statusCounts.completed > 0 && ` • ${statusCounts.completed} ended`}
                 {statusCounts.upcoming > 0 && ` • ${statusCounts.upcoming} upcoming`}
@@ -537,10 +426,6 @@ export default function CalendarScreen() {
         emptyTitle={
           isSearching
             ? 'No search results'
-            : selectedStatus === 'completed'
-            ? 'No ended meetings'
-            : selectedStatus === 'upcoming'
-            ? 'No upcoming meetings'
             : activeTab === 'today'
             ? 'No meetings today'
             : activeTab === 'week'
@@ -556,10 +441,6 @@ export default function CalendarScreen() {
         emptyDescription={
           isSearching
             ? `No meetings matched "${searchQuery}"`
-            : selectedStatus === 'completed'
-            ? 'There are no past or ended meetings for this selection.'
-            : selectedStatus === 'upcoming'
-            ? 'There are no upcoming meetings for this selection.'
             : activeTab === 'today'
             ? 'You have a clear schedule for today.'
             : activeTab === 'week'
@@ -567,7 +448,7 @@ export default function CalendarScreen() {
             : activeTab === 'past'
             ? 'No past meetings found in your calendar.'
             : activeTab === 'upcoming'
-            ? 'No upcoming meetings scheduled.'
+            ? 'No meetings scheduled for the next 3 days.'
             : 'Scheduled meetings and alarms will appear here.'
         }
         onAlarmPress={(m) => setActiveMeetingForAlarm(m)}
@@ -701,30 +582,6 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     marginTop: 2,
-  },
-  filterSection: {
-    gap: 6,
-    marginBottom: 8,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    gap: 6,
-  },
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginRight: 2,
-  },
-  filterPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  filterPillText: {
-    fontSize: 11,
   },
   todayOverviewBar: {
     flexDirection: 'row',

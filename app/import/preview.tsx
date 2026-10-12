@@ -21,7 +21,7 @@ import {
   convertParsedRowsToMeetingInputs,
 } from '../../services/imports/meeting.mapper';
 import { MeetingsRepository } from '../../services/database/repositories/meetings.repository';
-import { NotificationService } from '../../services/notifications/notification.service';
+import { AlarmService } from '../../services/alarms/alarm.service';
 import { useTheme } from '../../hooks/useTheme';
 import { useSettingsStore } from '../../store/settings.store';
 import { MEETINGS_QUERY_KEYS } from '../../hooks/useMeetings';
@@ -139,7 +139,7 @@ export default function ImportPreviewScreen() {
         const offset = inputs[i]?.alarmOffsetMinutes ?? defaultBatchAlarmOffset;
 
         if (settings.enableNotifications && offset >= 0) {
-          const alarms = await NotificationService.configureMeetingAlarms(
+          const alarms = await AlarmService.configureMeetingAlarms(
             meeting,
             [offset]
           );

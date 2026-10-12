@@ -7,20 +7,14 @@
     "icon": "./assets/icon.png",
     "scheme": "meetpulse",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0F172A"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.meetpulse.app",
       "infoPlist": {
         "UIBackgroundModes": [
-          "fetch",
-          "remote-notification"
+          "fetch"
         ],
-        "NSCalendarsUsageDescription": "Meeting Alarm uses your calendar to display upcoming events and schedule punctual alarm notifications.",
+        "NSCalendarsUsageDescription": "Meeting Alarm uses your calendar to display upcoming events and schedule punctual meeting alarms.",
         "NSRemindersUsageDescription": "Meeting Alarm needs access to schedule reminders for your scheduled meetings."
       }
     },
@@ -33,7 +27,6 @@
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
-        "POST_NOTIFICATIONS",
         "SCHEDULE_EXACT_ALARM",
         "USE_EXACT_ALARM",
         "INTERNET",
@@ -45,27 +38,22 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router",
-      "expo-secure-store",
       [
-        "expo-notifications",
+        "expo-splash-screen",
         {
-          "icon": "./assets/notification-icon.png",
-          "color": "#6366F1",
-          "sounds": [
-            "./assets/sounds/alarm.wav"
-          ]
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0F172A"
         }
       ],
+      "expo-router",
+      "expo-secure-store",
       "expo-document-picker",
       "expo-font"
     ],
     "extra": {
       "router": {
         "origin": false
-      },
-      "eas": {
-        "projectId": "92658289-9b1f-40f1-bb66-ca4aa75f15f8"
       }
     }
   }

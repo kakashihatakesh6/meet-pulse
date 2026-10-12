@@ -18,7 +18,7 @@ import { useCalendarSync } from '../../hooks/useCalendarSync';
 import { useTheme } from '../../hooks/useTheme';
 import { CalendarCard } from '../../components/CalendarCard';
 import { EmptyState } from '../../components/EmptyState';
-import { LoadingState } from '../../components/LoadingState';
+import { LoadingState, CalendarsListSkeleton } from '../../components/LoadingState';
 import { Button } from '../../components/Button';
 import { logger } from '../../utils/logger';
 
@@ -100,7 +100,7 @@ export default function CalendarsScreen() {
       </Text>
 
       {isLoading && calendars.length === 0 ? (
-        <LoadingState count={3} />
+        <CalendarsListSkeleton />
       ) : (
         <FlatList
           data={calendars}

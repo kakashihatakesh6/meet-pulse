@@ -11,24 +11,19 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications';
 import { useUpcomingAlarms, useToggleAlarm } from '../../hooks/useAlarms';
-import { useNotifications } from '../../hooks/useNotifications';
 import { useTheme } from '../../hooks/useTheme';
 import { AlarmWithMeeting } from '../../types/alarm';
 import { Header } from '../../components/Header';
 import { AlarmCard } from '../../components/AlarmCard';
 import { EmptyState } from '../../components/EmptyState';
-import { LoadingState } from '../../components/LoadingState';
-import { Button } from '../../components/Button';
-import { NOTIFICATION_CHANNELS } from '../../constants/alarms';
+import { LoadingState, AlarmsSkeleton } from '../../components/LoadingState';
 
 export default function AlarmsScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { data: upcomingAlarms = [], isLoading, refetch } = useUpcomingAlarms();
   const toggleAlarm = useToggleAlarm();
-  const { isGranted, requestPermissions } = useNotifications();
 
   const handleToggle = (alarmId: string, isEnabled: boolean) => {
     const alarmWithMeeting = upcomingAlarms.find((a: AlarmWithMeeting) => a.id === alarmId);
@@ -40,39 +35,12 @@ export default function AlarmsScreen() {
     });
   };
 
-  const handleTestNotification = async () => {
-    if (!isGranted) {
-      const granted = await requestPermissions();
-      if (!granted) {
-        Alert.alert(
-          'Permission Required',
-          'Please enable notifications in device settings to receive meeting alarms.'
-        );
-        return;
-      }
-    }
-
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '⏰ Test Alarm: Team Sync is starting now',
-          body: 'Google Meet • 10:00 AM – 11:00 AM',
-          sound: 'alarm.wav',
-          priority: Notifications.AndroidNotificationPriority.MAX,
-          data: { test: true },
-        },
-        trigger: {
-          seconds: 2,
-          channelId: NOTIFICATION_CHANNELS.HIGH_PRIORITY_ALARMS,
-        },
-      });
-      Alert.alert(
-        'Test Alarm Scheduled',
-        'You will receive a notification in 2 seconds.'
-      );
-    } catch (err) {
-      Alert.alert('Error', 'Failed to schedule test notification');
-    }
+  const handleTestNotification = () => {
+    Alert.alert(
+      '⏰ Test Alarm Triggered',
+      'Team Sync is starting now\nGoogle Meet • 10:00 AM – 11:00 AM',
+      [{ text: 'OK' }]
+    );
   };
 
   return (
@@ -101,37 +69,8 @@ export default function AlarmsScreen() {
         }
       />
 
-      {/* Permission Warning Banner */}
-      {!isGranted && (
-        <View
-          style={[
-            styles.warningBanner,
-            {
-              backgroundColor: colors.warningLight,
-              borderColor: colors.warningBorder,
-            },
-          ]}
-        >
-          <Ionicons name="warning" size={20} color={colors.warning} />
-          <View style={{ flex: 1, marginHorizontal: 8 }}>
-            <Text style={[styles.warningTitle, { color: colors.text }]}>
-              Notifications are disabled
-            </Text>
-            <Text style={[styles.warningDesc, { color: colors.textMuted }]}>
-              Grant permission so alarms can alert you on time.
-            </Text>
-          </View>
-          <Button
-            title="Enable"
-            onPress={requestPermissions}
-            size="sm"
-            variant="primary"
-          />
-        </View>
-      )}
-
       {isLoading && upcomingAlarms.length === 0 ? (
-        <LoadingState count={4} />
+        <AlarmsSkeleton />
       ) : (
         <FlatList
           data={upcomingAlarms}
@@ -196,21 +135,5 @@ const styles = StyleSheet.create({
   testBtnText: {
     fontSize: 12,
     fontWeight: '700',
-  },
-  warningBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  warningTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  warningDesc: {
-    fontSize: 11,
   },
 });

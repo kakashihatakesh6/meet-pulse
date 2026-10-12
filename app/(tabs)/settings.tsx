@@ -16,7 +16,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/auth.store';
 import { useSettingsStore } from '../../store/settings.store';
 import { useCalendarSync } from '../../hooks/useCalendarSync';
-import { useNotifications } from '../../hooks/useNotifications';
 import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 import { useTheme } from '../../hooks/useTheme';
 import { MeetingsRepository } from '../../services/database/repositories/meetings.repository';
@@ -35,7 +34,6 @@ export default function SettingsScreen() {
   const { signIn, signOut } = useGoogleAuth();
   const { settings, updateSettings, setTheme } = useSettingsStore();
   const { sync, isSyncing, lastSyncedLabel } = useCalendarSync();
-  const { isGranted, requestPermissions } = useNotifications();
 
   const [isClearing, setIsClearing] = useState(false);
 
@@ -283,36 +281,25 @@ export default function SettingsScreen() {
           </View>
         </Card>
 
-        {/* 2. Notifications Section */}
+        {/* 2. Alarms Section */}
         <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
-          NOTIFICATIONS & ALARMS
+          MEETING ALARMS
         </Text>
         <Card style={styles.card}>
           <View style={styles.toggleRow}>
             <View style={{ flex: 1, marginRight: 10 }}>
               <Text style={[styles.itemTitle, { color: colors.text }]}>
-                Notification Permissions
+                In-App Meeting Alarms
               </Text>
               <Text style={[styles.itemSubtitle, { color: colors.textMuted }]}>
-                {isGranted
-                  ? 'Active and enabled'
-                  : 'Disabled in device settings'}
+                Active and scheduled for all upcoming meetings
               </Text>
             </View>
-            {!isGranted ? (
-              <Button
-                title="Enable"
-                onPress={requestPermissions}
-                size="sm"
-                variant="primary"
-              />
-            ) : (
-              <Ionicons
-                name="checkmark-circle"
-                size={22}
-                color={colors.success}
-              />
-            )}
+            <Ionicons
+              name="checkmark-circle"
+              size={22}
+              color={colors.success}
+            />
           </View>
 
           <View

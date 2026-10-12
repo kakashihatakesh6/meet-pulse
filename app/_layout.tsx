@@ -9,7 +9,6 @@ import { useAuthStore } from '../store/auth.store';
 import { useSettingsStore } from '../store/settings.store';
 import { getDatabase } from '../services/database/database';
 import { BackgroundSyncManager } from '../services/sync/background.task';
-import { useNotifications } from '../hooks/useNotifications';
 import { useTheme } from '../hooks/useTheme';
 import { logger } from '../utils/logger';
 
@@ -27,7 +26,6 @@ const queryClient = new QueryClient({
 
 function RootLayoutContent() {
   const { isDark } = useTheme();
-  useNotifications(); // Sets up notification categories and tap listeners
 
   return (
     <>

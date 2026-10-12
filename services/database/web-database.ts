@@ -477,10 +477,23 @@ export class WebSqliteDatabase implements DatabaseInstance {
   ): boolean {
     let pIdx = initialParamIdx;
 
+    // Direct condition: id = ? OR google_event_id = ?
+    if (/^(?:[a-zA-Z0-9_]+\.)?id\s*=\s*\?\s+OR\s+[a-zA-Z0-9_.]*google_event_id\s*=\s*\?$/i.test(whereClause.trim())) {
+      const targetId1 = params[pIdx++];
+      const targetId2 = params[pIdx++];
+      return (
+        String(row['id']) === String(targetId1) ||
+        String(row['google_event_id']) === String(targetId2) ||
+        String(row['id']) === String(targetId2) ||
+        String(row['google_event_id']) === String(targetId1)
+      );
+    }
+
     // Direct single condition: id = ?
     if (/^(?:[a-zA-Z0-9_]+\.)?id\s*=\s*\?$/i.test(whereClause.trim())) {
       const targetId = params[pIdx++];
-      return String(row['id']) === String(targetId);
+      if (targetId === undefined || targetId === null) return false;
+      return String(row['id']) === String(targetId) || String(row['google_event_id']) === String(targetId);
     }
 
     // Direct condition: google_calendar_id = ?
@@ -492,7 +505,7 @@ export class WebSqliteDatabase implements DatabaseInstance {
     // Direct condition: google_event_id = ?
     if (/^google_event_id\s*=\s*\?$/i.test(whereClause.trim())) {
       const targetId = params[pIdx++];
-      return String(row['google_event_id']) === String(targetId);
+      return String(row['google_event_id']) === String(targetId) || String(row['id']) === String(targetId);
     }
 
     // Direct condition: key = ?

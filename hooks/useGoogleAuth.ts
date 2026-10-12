@@ -130,7 +130,8 @@ export function useGoogleAuth() {
         }
       } else if (response?.type === 'error') {
         logger.error('OAuth response error', response.error);
-        setAuthError(response.error?.message || 'Authentication was cancelled or failed');
+        const errMessage = (response.error as any)?.message || (response.error as any)?.description || 'Authentication was cancelled or failed';
+        setAuthError(errMessage);
         setIsAuthenticating(false);
       } else if (response?.type === 'dismiss' || response?.type === 'cancel') {
         setIsAuthenticating(false);
