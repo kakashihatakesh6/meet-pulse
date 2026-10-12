@@ -62,7 +62,12 @@ export function useDateRangeMeetings(
 }
 
 export function useMeetingDetails(meetingId?: string) {
-  const cleanId = meetingId ? decodeURIComponent(String(meetingId).trim()) : '';
+  let cleanId = meetingId ? String(meetingId).trim() : '';
+  try {
+    cleanId = decodeURIComponent(cleanId);
+  } catch {
+    // keep as is if malformed
+  }
   return useQuery({
     queryKey: MEETINGS_QUERY_KEYS.detail(cleanId),
     queryFn: () => (cleanId ? MeetingsRepository.getById(cleanId) : null),

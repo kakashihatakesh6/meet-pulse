@@ -183,7 +183,12 @@ export default function DashboardScreen() {
                 </Text>
                 <TouchableOpacity
                   activeOpacity={0.85}
-                  onPress={() => router.push(`/meeting/${nextMeeting.id}`)}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/meeting/[id]',
+                      params: { id: nextMeeting.id },
+                    })
+                  }
                 >
                   <Card
                     style={[

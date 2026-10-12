@@ -344,7 +344,9 @@ export class WebSqliteDatabase implements DatabaseInstance {
     }
 
     // 2. Standard SELECT from table with optional JOIN, WHERE, ORDER BY, LIMIT
-    const fromMatch = sql.match(/FROM\s+([a-zA-Z0-9_]+)(?:\s+([a-zA-Z0-9_]+))?(.*)/is);
+    const fromMatch = sql.match(
+      /FROM\s+([a-zA-Z0-9_]+)(?:\s+(?!WHERE\b|LEFT\b|RIGHT\b|INNER\b|OUTER\b|CROSS\b|JOIN\b|ORDER\b|GROUP\b|LIMIT\b|HAVING\b)([a-zA-Z0-9_]+))?(.*)/is
+    );
     if (!fromMatch) {
       return [];
     }
@@ -477,51 +479,74 @@ export class WebSqliteDatabase implements DatabaseInstance {
   ): boolean {
     let pIdx = initialParamIdx;
 
-    // Direct condition: id = ? OR google_event_id = ?
-    if (/^(?:[a-zA-Z0-9_]+\.)?id\s*=\s*\?\s+OR\s+[a-zA-Z0-9_.]*google_event_id\s*=\s*\?$/i.test(whereClause.trim())) {
+    // Direct condition: id = ? OR google_event_id = ? (in either order, with optional aliases/parens)
+    if (
+      /^\(?\s*(?:[a-zA-Z0-9_]+\.)?id\s*=\s*\?\s+OR\s+[a-zA-Z0-9_.]*google_event_id\s*=\s*\?\s*\)?$/i.test(whereClause.trim()) ||
+      /^\(?\s*[a-zA-Z0-9_.]*google_event_id\s*=\s*\?\s+OR\s+(?:[a-zA-Z0-9_]+\.)?id\s*=\s*\?\s*\)?$/i.test(whereClause.trim())
+    ) {
       const targetId1 = params[pIdx++];
       const targetId2 = params[pIdx++];
+      const rowId = row['id'] != null ? String(row['id']) : null;
+      const rowGId = row['google_event_id'] != null ? String(row['google_event_id']) : null;
+      const t1 = targetId1 != null ? String(targetId1) : null;
+      const t2 = targetId2 != null ? String(targetId2) : null;
+
       return (
-        String(row['id']) === String(targetId1) ||
-        String(row['google_event_id']) === String(targetId2) ||
-        String(row['id']) === String(targetId2) ||
-        String(row['google_event_id']) === String(targetId1)
+        (t1 != null && (rowId === t1 || rowGId === t1)) ||
+        (t2 != null && (rowId === t2 || rowGId === t2))
       );
+    }
+
+    // Direct condition: meeting_id = ? AND offset_minutes = ?
+    if (/^(?:[a-zA-Z0-9_]+\.)?meeting_id\s*=\s*\?\s+AND\s+[a-zA-Z0-9_.]*offset_minutes\s*=\s*\?$/i.test(whereClause.trim())) {
+      const targetMeetingId = params[pIdx++];
+      const targetOffset = Number(params[pIdx++]);
+      return (
+        String(row['meeting_id']) === String(targetMeetingId) &&
+        Number(row['offset_minutes']) === targetOffset
+      );
+    }
+
+    // Direct condition: id = ? AND source = 'imported'
+    if (/^(?:[a-zA-Z0-9_]+\.)?id\s*=\s*\?\s+AND\s+[a-zA-Z0-9_.]*source\s*=\s*'imported'$/i.test(whereClause.trim())) {
+      const targetId = params[pIdx++];
+      return String(row['id']) === String(targetId) && row['source'] === 'imported';
     }
 
     // Direct single condition: id = ?
     if (/^(?:[a-zA-Z0-9_]+\.)?id\s*=\s*\?$/i.test(whereClause.trim())) {
       const targetId = params[pIdx++];
       if (targetId === undefined || targetId === null) return false;
-      return String(row['id']) === String(targetId) || String(row['google_event_id']) === String(targetId);
+      const t = String(targetId);
+      return String(row['id']) === t || (row['google_event_id'] != null && String(row['google_event_id']) === t);
     }
 
     // Direct condition: google_calendar_id = ?
-    if (/^google_calendar_id\s*=\s*\?$/i.test(whereClause.trim())) {
+    if (/^(?:[a-zA-Z0-9_]+\.)?google_calendar_id\s*=\s*\?$/i.test(whereClause.trim())) {
       const targetId = params[pIdx++];
       return String(row['google_calendar_id']) === String(targetId);
     }
 
     // Direct condition: google_event_id = ?
-    if (/^google_event_id\s*=\s*\?$/i.test(whereClause.trim())) {
+    if (/^(?:[a-zA-Z0-9_]+\.)?google_event_id\s*=\s*\?$/i.test(whereClause.trim())) {
       const targetId = params[pIdx++];
       return String(row['google_event_id']) === String(targetId) || String(row['id']) === String(targetId);
     }
 
     // Direct condition: key = ?
-    if (/^key\s*=\s*\?$/i.test(whereClause.trim())) {
+    if (/^(?:[a-zA-Z0-9_]+\.)?key\s*=\s*\?$/i.test(whereClause.trim())) {
       const targetKey = params[pIdx++];
       return String(row['key']) === String(targetKey);
     }
 
     // Direct condition: calendar_id = ?
-    if (/^calendar_id\s*=\s*\?$/i.test(whereClause.trim())) {
+    if (/^(?:[a-zA-Z0-9_]+\.)?calendar_id\s*=\s*\?$/i.test(whereClause.trim())) {
       const targetId = params[pIdx++];
       return String(row['calendar_id']) === String(targetId);
     }
 
     // Direct condition: meeting_id = ?
-    if (/^meeting_id\s*=\s*\?$/i.test(whereClause.trim())) {
+    if (/^(?:[a-zA-Z0-9_]+\.)?meeting_id\s*=\s*\?$/i.test(whereClause.trim())) {
       const targetId = params[pIdx++];
       return String(row['meeting_id']) === String(targetId);
     }

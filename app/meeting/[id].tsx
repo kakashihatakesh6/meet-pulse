@@ -35,7 +35,14 @@ import { Attendee } from '../../types/meeting';
 export default function MeetingDetailsScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const meetingId = rawId ? decodeURIComponent(rawId) : '';
+  const meetingId = React.useMemo(() => {
+    if (!rawId) return '';
+    try {
+      return decodeURIComponent(rawId).trim();
+    } catch {
+      return String(rawId).trim();
+    }
+  }, [rawId]);
   const router = useRouter();
   const { colors } = useTheme();
 
@@ -109,7 +116,7 @@ export default function MeetingDetailsScreen() {
     meeting.startTime,
     meeting.endTime
   );
-  const dateFormatted = formatInTz(meeting.startTime, 'EEEE, MMMM d, yyyy');
+  const dateFormatted = formatInTz(meeting.startTime, 'EEEE, MMMM d, yyyy', meeting.timezone);
   const timeFormatted = formatMeetingTime(
     meeting.startTime,
     meeting.endTime,
@@ -117,7 +124,8 @@ export default function MeetingDetailsScreen() {
     meeting.isAllDay
   );
 
-  const activeAlarms = meeting.alarms || [];
+  const activeAlarms = Array.isArray(meeting.alarms) ? meeting.alarms : [];
+  const attendeesList = Array.isArray(meeting.attendees) ? meeting.attendees : [];
 
   const handleJoinMeeting = () => {
     if (meeting.meetingUrl) {
@@ -423,10 +431,10 @@ export default function MeetingDetailsScreen() {
         {/* Organizer & Attendees */}
         {(meeting.organizerName ||
           meeting.organizerEmail ||
-          meeting.attendees.length > 0) && (
+          attendeesList.length > 0) && (
           <View style={styles.section}>
             <Text style={[styles.sectionHeading, { color: colors.textMuted }]}>
-              PARTICIPANTS ({meeting.attendees.length + (meeting.organizerName ? 1 : 0)})
+              PARTICIPANTS ({attendeesList.length + (meeting.organizerName ? 1 : 0)})
             </Text>
             <Card style={styles.infoCard}>
               {meeting.organizerName && (
@@ -457,8 +465,8 @@ export default function MeetingDetailsScreen() {
                 </View>
               )}
 
-              {meeting.attendees.map((att: Attendee, idx: number) => (
-                <View key={idx} style={styles.attendeeRow}>
+              {attendeesList.map((att: Attendee, idx: number) => (
+                <View key={`att-${idx}`} style={styles.attendeeRow}>
                   <Ionicons
                     name="person-outline"
                     size={16}
@@ -469,9 +477,9 @@ export default function MeetingDetailsScreen() {
                     <Text
                       style={[styles.participantName, { color: colors.text }]}
                     >
-                      {att.displayName || att.email}
+                      {att.displayName || att.email || 'Participant'}
                     </Text>
-                    {att.displayName && (
+                    {att.displayName && att.email ? (
                       <Text
                         style={[
                           styles.participantEmail,
@@ -480,7 +488,7 @@ export default function MeetingDetailsScreen() {
                       >
                         {att.email}
                       </Text>
-                    )}
+                    ) : null}
                   </View>
                   {att.responseStatus && (
                     <Text
@@ -496,7 +504,7 @@ export default function MeetingDetailsScreen() {
                         },
                       ]}
                     >
-                      {att.responseStatus.toUpperCase()}
+                      {String(att.responseStatus).toUpperCase()}
                     </Text>
                   )}
                 </View>
@@ -511,7 +519,7 @@ export default function MeetingDetailsScreen() {
         visible={isAlarmModalVisible}
         meetingTitle={meeting.title}
         initialOffsets={activeAlarms
-          .filter((a: Alarm) => a.isEnabled)
+          .filter((a: Alarm) => a && a.isEnabled)
           .map((a: Alarm) => a.offsetMinutes)}
         onSave={handleSaveAlarms}
         onClose={() => setIsAlarmModalVisible(false)}

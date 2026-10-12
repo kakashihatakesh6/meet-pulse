@@ -19,13 +19,13 @@ interface DbAlarmRow {
 
 function mapRowToAlarm(row: DbAlarmRow): Alarm {
   return {
-    id: row.id,
-    meetingId: row.meeting_id,
-    offsetMinutes: row.offset_minutes,
+    id: String(row.id),
+    meetingId: String(row.meeting_id),
+    offsetMinutes: Number(row.offset_minutes),
     scheduledTime: row.scheduled_time,
     notificationId: row.notification_id || undefined,
-    status: row.status as Alarm['status'],
-    isEnabled: row.is_enabled === 1,
+    status: (row.status as Alarm['status']) || 'pending',
+    isEnabled: row.is_enabled === 1 || (row.is_enabled as unknown) === true,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -159,10 +159,18 @@ export const AlarmsRepository = {
           platform: (r.m_platform as Meeting['platform']) || 'none',
           organizerName: r.m_organizer_name || undefined,
           organizerEmail: r.m_organizer_email || undefined,
-          attendees: JSON.parse(r.m_attendees || '[]'),
-          source: r.m_source as Meeting['source'],
-          status: r.m_status as Meeting['status'],
-          isAllDay: r.m_is_all_day === 1,
+          attendees: (() => {
+            try {
+              if (Array.isArray(r.m_attendees)) return r.m_attendees;
+              const parsed = JSON.parse(r.m_attendees || '[]');
+              return Array.isArray(parsed) ? parsed : [];
+            } catch {
+              return [];
+            }
+          })(),
+          source: (r.m_source as Meeting['source']) || 'google_calendar',
+          status: (r.m_status as Meeting['status']) || 'upcoming',
+          isAllDay: r.m_is_all_day === 1 || (r.m_is_all_day as unknown) === true,
           createdAt: r.m_created_at,
           updatedAt: r.m_updated_at,
         },

@@ -39,11 +39,11 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
   const platformInfo = getPlatformDisplayInfo(meeting.platform);
 
   // Active alarms summary
-  const activeAlarms = meeting.alarms.filter((a) => a.isEnabled);
+  const activeAlarms = (meeting.alarms || []).filter((a) => a && a.isEnabled);
   const hasAlarms = activeAlarms.length > 0;
 
   const handleCardPress = () => {
-    router.push(`/meeting/${meeting.id}`);
+    router.push({ pathname: '/meeting/[id]', params: { id: meeting.id } });
   };
 
   const handleJoinPress = (e: { stopPropagation: () => void }) => {
@@ -58,7 +58,7 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
     if (onAlarmPress) {
       onAlarmPress(meeting);
     } else {
-      router.push(`/meeting/${meeting.id}`);
+      router.push({ pathname: '/meeting/[id]', params: { id: meeting.id } });
     }
   };
 
@@ -243,7 +243,7 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
           </Text>
         </View>
 
-        {meeting.attendees.length > 0 && (
+        {Array.isArray(meeting.attendees) && meeting.attendees.length > 0 && (
           <View style={styles.attendeesBadge}>
             <Ionicons
               name="people-outline"

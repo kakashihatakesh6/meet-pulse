@@ -79,7 +79,9 @@ export default function AlarmsScreen() {
             <AlarmCard
               alarmWithMeeting={item}
               onToggle={handleToggle}
-              onPressMeeting={(id) => router.push(`/meeting/${id}`)}
+              onPressMeeting={(id) =>
+                router.push({ pathname: '/meeting/[id]', params: { id } })
+              }
             />
           )}
           ListEmptyComponent={

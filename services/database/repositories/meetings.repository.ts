@@ -6,6 +6,7 @@ import {
   CreateMeetingInput,
   UpdateMeetingInput,
   MeetingFilterOptions,
+  Attendee,
 } from '../../../types/meeting';
 import { Alarm } from '../../../types/alarm';
 import { getDayBoundariesInTz } from '../../../utils/timezone';
@@ -49,16 +50,23 @@ interface DbAlarmRow {
 }
 
 function mapRowToMeeting(row: DbMeetingRow): Meeting {
-  let attendees = [];
+  let attendees: Attendee[] = [];
   try {
-    attendees = JSON.parse(row.attendees || '[]');
+    if (Array.isArray(row.attendees)) {
+      attendees = row.attendees;
+    } else if (typeof row.attendees === 'string') {
+      const parsed = JSON.parse(row.attendees || '[]');
+      attendees = Array.isArray(parsed) ? parsed : [];
+    }
   } catch {
     attendees = [];
   }
 
   let rawData = undefined;
   try {
-    if (row.raw_data) rawData = JSON.parse(row.raw_data);
+    if (row.raw_data) {
+      rawData = typeof row.raw_data === 'object' ? row.raw_data : JSON.parse(row.raw_data);
+    }
   } catch {
     // ignore
   }
@@ -70,23 +78,23 @@ function mapRowToMeeting(row: DbMeetingRow): Meeting {
   );
 
   return {
-    id: row.id,
+    id: String(row.id),
     googleEventId: row.google_event_id || undefined,
     calendarId: row.calendar_id,
-    title: row.title,
+    title: row.title || 'Untitled Meeting',
     description: row.description || undefined,
     startTime: row.start_time,
     endTime: row.end_time,
-    timezone: row.timezone,
+    timezone: row.timezone || 'UTC',
     location: row.location || undefined,
     meetingUrl: row.meeting_url || undefined,
     platform: (row.platform as Meeting['platform']) || 'none',
     organizerName: row.organizer_name || undefined,
     organizerEmail: row.organizer_email || undefined,
     attendees,
-    source: row.source as Meeting['source'],
+    source: (row.source as Meeting['source']) || 'google_calendar',
     status,
-    isAllDay: row.is_all_day === 1,
+    isAllDay: row.is_all_day === 1 || (row.is_all_day as unknown) === true,
     recurringEventId: row.recurring_event_id || undefined,
     rawData,
     createdAt: row.created_at,
@@ -96,13 +104,13 @@ function mapRowToMeeting(row: DbMeetingRow): Meeting {
 
 function mapRowToAlarm(row: DbAlarmRow): Alarm {
   return {
-    id: row.id,
-    meetingId: row.meeting_id,
-    offsetMinutes: row.offset_minutes,
+    id: String(row.id),
+    meetingId: String(row.meeting_id),
+    offsetMinutes: Number(row.offset_minutes),
     scheduledTime: row.scheduled_time,
     notificationId: row.notification_id || undefined,
-    status: row.status as Alarm['status'],
-    isEnabled: row.is_enabled === 1,
+    status: (row.status as Alarm['status']) || 'pending',
+    isEnabled: row.is_enabled === 1 || (row.is_enabled as unknown) === true,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -114,7 +122,12 @@ export const MeetingsRepository = {
    */
   async getById(id: string): Promise<MeetingWithAlarms | null> {
     if (!id) return null;
-    const cleanId = decodeURIComponent(String(id).trim());
+    let cleanId = String(id).trim();
+    try {
+      cleanId = decodeURIComponent(cleanId);
+    } catch {
+      // ignore decoding error
+    }
     const db = await getDatabase();
     const meetingRow = await db.getFirstAsync<DbMeetingRow>(
       'SELECT * FROM meetings WHERE id = ? OR google_event_id = ?',
