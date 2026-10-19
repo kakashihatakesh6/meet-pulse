@@ -12,6 +12,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useUpcomingAlarms, useToggleAlarm } from '../../hooks/useAlarms';
+import { useNotifications } from '../../hooks/useNotifications';
+import { NotificationService } from '../../services/notifications/notification.service';
 import { useTheme } from '../../hooks/useTheme';
 import { AlarmWithMeeting } from '../../types/alarm';
 import { Header } from '../../components/Header';
@@ -24,6 +26,7 @@ export default function AlarmsScreen() {
   const router = useRouter();
   const { data: upcomingAlarms = [], isLoading, refetch } = useUpcomingAlarms();
   const toggleAlarm = useToggleAlarm();
+  const { isGranted, requestPermissions } = useNotifications();
 
   const handleToggle = (alarmId: string, isEnabled: boolean) => {
     const alarmWithMeeting = upcomingAlarms.find((a: AlarmWithMeeting) => a.id === alarmId);
@@ -35,12 +38,28 @@ export default function AlarmsScreen() {
     });
   };
 
-  const handleTestNotification = () => {
-    Alert.alert(
-      '⏰ Test Alarm Triggered',
-      'Team Sync is starting now\nGoogle Meet • 10:00 AM – 11:00 AM',
-      [{ text: 'OK' }]
-    );
+  const handleTestNotification = async () => {
+    if (!isGranted) {
+      const granted = await requestPermissions();
+      if (!granted) {
+        Alert.alert(
+          'Permission Required',
+          'Please grant notification permissions in device settings to receive meeting alarms.'
+        );
+        return;
+      }
+    }
+
+    try {
+      await NotificationService.sendTestNotification();
+      Alert.alert(
+        '🔔 Test Alarm Scheduled',
+        'You will receive a high-priority meeting notification in 2 seconds with custom sound and vibration.',
+        [{ text: 'Got it' }]
+      );
+    } catch (err) {
+      Alert.alert('Error', 'Failed to schedule test notification');
+    }
   };
 
   return (
@@ -68,6 +87,39 @@ export default function AlarmsScreen() {
           </TouchableOpacity>
         }
       />
+
+      {/* Permission Warning Banner if notifications are disabled */}
+      {!isGranted ? (
+        <View
+          style={[
+            styles.banner,
+            {
+              backgroundColor: colors.surfaceSubtle,
+              borderColor: colors.warning,
+            },
+          ]}
+        >
+          <Ionicons
+            name="notifications-off-outline"
+            size={22}
+            color={colors.warning}
+          />
+          <View style={styles.bannerTextCol}>
+            <Text style={[styles.bannerTitle, { color: colors.text }]}>
+              Notifications Are Disabled
+            </Text>
+            <Text style={[styles.bannerDesc, { color: colors.textMuted }]}>
+              Enable permissions so you receive 10-minute alarms before meetings.
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={requestPermissions}
+            style={[styles.enableBtn, { backgroundColor: colors.primary }]}
+          >
+            <Text style={styles.enableBtnText}>Enable</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       {isLoading && upcomingAlarms.length === 0 ? (
         <AlarmsSkeleton />
@@ -135,6 +187,37 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   testBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  bannerTextCol: {
+    flex: 1,
+    marginHorizontal: 10,
+  },
+  bannerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  bannerDesc: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  enableBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  enableBtnText: {
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
   },

@@ -5,6 +5,7 @@ import { MeetingsRepository } from '../database/repositories/meetings.repository
 import { SyncRepository } from '../database/repositories/sync.repository';
 import { SettingsRepository } from '../database/repositories/settings.repository';
 import { AlarmService } from '../alarms/alarm.service';
+import { NotificationService } from '../notifications/notification.service';
 import { SyncResult } from '../../types/sync';
 import { logger } from '../../utils/logger';
 
@@ -147,6 +148,9 @@ export const CalendarSyncService = {
                   status: 'cancelled',
                 });
                 await AlarmService.cancelAllAlarmsForMeeting(existingMeeting.id);
+                if (settings.enableNotifications) {
+                  await NotificationService.sendMeetingCancelledNotification(existingMeeting.title);
+                }
                 deletedCount++;
               }
               continue;
@@ -174,6 +178,12 @@ export const CalendarSyncService = {
               if (hasTimeChanged) {
                 // Reschedule alarms for updated times
                 await AlarmService.rescheduleMeetingAlarms(updatedMeeting);
+                if (settings.enableNotifications) {
+                  await NotificationService.sendMeetingRescheduledNotification(
+                    updatedMeeting,
+                    existingMeeting.startTime
+                  );
+                }
               }
             } else {
               // New Meeting

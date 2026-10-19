@@ -10,6 +10,7 @@ import { useSettingsStore } from '../store/settings.store';
 import { getDatabase } from '../services/database/database';
 import { BackgroundSyncManager } from '../services/sync/background.task';
 import { useTheme } from '../hooks/useTheme';
+import { useNotifications } from '../hooks/useNotifications';
 import { logger } from '../utils/logger';
 
 // Keep splash screen visible while initializing app
@@ -26,6 +27,7 @@ const queryClient = new QueryClient({
 
 function RootLayoutContent() {
   const { isDark } = useTheme();
+  useNotifications(); // Sets up notification channels, categories, and tap listeners
 
   return (
     <>

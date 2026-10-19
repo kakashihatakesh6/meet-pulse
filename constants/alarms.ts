@@ -22,13 +22,13 @@ export const ALARM_PRESETS: AlarmPresetOption[] = [
     label: '10 minutes before',
     shortLabel: '10 min before',
     minutes: 10,
-    description: 'Time to prepare meeting notes',
+    description: 'Default reminder: wrap up current work & prepare notes',
   },
   {
     label: '15 minutes before',
     shortLabel: '15 min before',
     minutes: 15,
-    description: 'Standard reminder to review agenda',
+    description: 'Early reminder to review agenda',
   },
   {
     label: '30 minutes before',
@@ -43,6 +43,11 @@ export const ALARM_PRESETS: AlarmPresetOption[] = [
     description: 'Major buffer for essential preparation',
   },
 ];
+
+export const NOTIFICATION_CHANNELS = {
+  HIGH_PRIORITY_ALARMS: 'meeting-high-priority-alarms',
+  STANDARD_UPDATES: 'meeting-standard-updates',
+};
 
 export function formatAlarmOffsetLabel(minutes: number): string {
   if (minutes === 0) return 'At meeting time';

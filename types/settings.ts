@@ -17,7 +17,7 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
-  defaultAlarmOffsets: [15],
+  defaultAlarmOffsets: [10],
   enableMeetingTimeAlarm: true,
   enableNotifications: true,
   autoSyncOnAppOpen: true,

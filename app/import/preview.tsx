@@ -45,7 +45,7 @@ export default function ImportPreviewScreen() {
 
   const [isImporting, setIsImporting] = useState(false);
   const [defaultBatchAlarmOffset, setDefaultBatchAlarmOffset] = useState<number>(
-    settings.defaultAlarmOffsets[0] || 15
+    settings.defaultAlarmOffsets[0] ?? 10
   );
 
   const parseResult: SpreadsheetParseResult = useMemo(() => {
