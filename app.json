@@ -12,7 +12,8 @@
       "bundleIdentifier": "com.meetpulse.app",
       "infoPlist": {
         "UIBackgroundModes": [
-          "fetch"
+          "fetch",
+          "remote-notification"
         ],
         "NSCalendarsUsageDescription": "Meeting Alarm uses your calendar to display upcoming events and schedule punctual meeting alarms.",
         "NSRemindersUsageDescription": "Meeting Alarm needs access to schedule reminders for your scheduled meetings."
@@ -27,6 +28,7 @@
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
+        "POST_NOTIFICATIONS",
         "SCHEDULE_EXACT_ALARM",
         "USE_EXACT_ALARM",
         "INTERNET",
@@ -48,6 +50,16 @@
       ],
       "expo-router",
       "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#6366F1",
+          "sounds": [
+            "./assets/sounds/alarm.wav"
+          ]
+        }
+      ],
       "expo-document-picker",
       "expo-font"
     ],

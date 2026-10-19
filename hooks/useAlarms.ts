@@ -68,11 +68,12 @@ export function useToggleAlarm() {
           notificationId: undefined,
         });
       } else if (meeting && offsetMinutes !== undefined) {
-        const { scheduledTime } =
+        const { scheduledTime, notificationId } =
           await AlarmService.scheduleAlarm(meeting, offsetMinutes);
         await AlarmsRepository.update(alarmId, {
           isEnabled: true,
           scheduledTime,
+          notificationId,
         });
       } else {
         await AlarmsRepository.update(alarmId, { isEnabled: true });

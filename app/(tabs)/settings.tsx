@@ -18,6 +18,7 @@ import { useSettingsStore } from '../../store/settings.store';
 import { useCalendarSync } from '../../hooks/useCalendarSync';
 import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 import { useTheme } from '../../hooks/useTheme';
+import { useNotifications } from '../../hooks/useNotifications';
 import { MeetingsRepository } from '../../services/database/repositories/meetings.repository';
 import { CalendarsRepository } from '../../services/database/repositories/calendars.repository';
 import { AlarmsRepository } from '../../services/database/repositories/alarms.repository';
@@ -34,6 +35,7 @@ export default function SettingsScreen() {
   const { signIn, signOut } = useGoogleAuth();
   const { settings, updateSettings, setTheme } = useSettingsStore();
   const { sync, isSyncing, lastSyncedLabel } = useCalendarSync();
+  const { isGranted, requestPermissions } = useNotifications();
 
   const [isClearing, setIsClearing] = useState(false);
 
@@ -158,11 +160,11 @@ export default function SettingsScreen() {
   };
 
   const toggleDefaultAlarmOffset = (minutes: number) => {
-    const current = settings.defaultAlarmOffsets || [15];
+    const current = settings.defaultAlarmOffsets || [10];
     const updated = current.includes(minutes)
       ? current.filter((m) => m !== minutes)
       : [...current, minutes].sort((a, b) => a - b);
-    updateSettings({ defaultAlarmOffsets: updated.length > 0 ? updated : [15] });
+    updateSettings({ defaultAlarmOffsets: updated.length > 0 ? updated : [10] });
   };
 
   return (
@@ -283,22 +285,78 @@ export default function SettingsScreen() {
 
         {/* 2. Alarms Section */}
         <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
-          MEETING ALARMS
+          MEETING ALARMS & NOTIFICATIONS
         </Text>
         <Card style={styles.card}>
+          {/* Permission Status */}
           <View style={styles.toggleRow}>
             <View style={{ flex: 1, marginRight: 10 }}>
               <Text style={[styles.itemTitle, { color: colors.text }]}>
-                In-App Meeting Alarms
+                Device Notifications
               </Text>
               <Text style={[styles.itemSubtitle, { color: colors.textMuted }]}>
-                Active and scheduled for all upcoming meetings
+                {isGranted
+                  ? 'Active • System alerts enabled for meeting alarms'
+                  : 'Disabled • Tap to enable notifications in device settings'}
               </Text>
             </View>
-            <Ionicons
-              name="checkmark-circle"
-              size={22}
-              color={colors.success}
+            {isGranted ? (
+              <Ionicons
+                name="checkmark-circle"
+                size={22}
+                color={colors.success}
+              />
+            ) : (
+              <Button
+                title="Enable"
+                onPress={requestPermissions}
+                size="sm"
+                variant="primary"
+              />
+            )}
+          </View>
+
+          <View
+            style={[styles.divider, { backgroundColor: colors.surfaceBorder }]}
+          />
+
+          {/* Master Notifications Toggle */}
+          <View style={styles.toggleRow}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={[styles.itemTitle, { color: colors.text }]}>
+                Meeting Alarms
+              </Text>
+              <Text style={[styles.itemSubtitle, { color: colors.textMuted }]}>
+                Schedule alerts before upcoming meetings
+              </Text>
+            </View>
+            <Switch
+              value={settings.enableNotifications}
+              onValueChange={(val) => updateSettings({ enableNotifications: val })}
+              trackColor={{ false: colors.surfaceSubtle, true: colors.primaryLight }}
+              thumbColor={settings.enableNotifications ? colors.primary : colors.textSubtle}
+            />
+          </View>
+
+          <View
+            style={[styles.divider, { backgroundColor: colors.surfaceBorder }]}
+          />
+
+          {/* Vibration & Sound Toggle */}
+          <View style={styles.toggleRow}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={[styles.itemTitle, { color: colors.text }]}>
+                Sound & Vibration
+              </Text>
+              <Text style={[styles.itemSubtitle, { color: colors.textMuted }]}>
+                Play custom meeting alarm sound with vibration pattern
+              </Text>
+            </View>
+            <Switch
+              value={settings.vibrationPatternEnabled}
+              onValueChange={(val) => updateSettings({ vibrationPatternEnabled: val })}
+              trackColor={{ false: colors.surfaceSubtle, true: colors.primaryLight }}
+              thumbColor={settings.vibrationPatternEnabled ? colors.primary : colors.textSubtle}
             />
           </View>
 
@@ -313,11 +371,11 @@ export default function SettingsScreen() {
               { color: colors.text, marginBottom: 8, marginTop: 4 },
             ]}
           >
-            Default Alarm Offsets for New Meetings
+            Default Reminders for New Meetings
           </Text>
           <View style={styles.offsetChipsRow}>
             {[0, 5, 10, 15, 30, 60].map((mins) => {
-              const isSelected = (settings.defaultAlarmOffsets || [15]).includes(
+              const isSelected = (settings.defaultAlarmOffsets || [10]).includes(
                 mins
               );
               return (

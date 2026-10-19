@@ -24,6 +24,7 @@ describe('Alarm Calculations & Notifications', () => {
     it('formats offset presets accurately', () => {
       expect(formatAlarmOffsetLabel(0)).toBe('At meeting time');
       expect(formatAlarmOffsetLabel(5)).toBe('5 min before');
+      expect(formatAlarmOffsetLabel(10)).toBe('10 min before');
       expect(formatAlarmOffsetLabel(15)).toBe('15 min before');
       expect(formatAlarmOffsetLabel(30)).toBe('30 min before');
       expect(formatAlarmOffsetLabel(60)).toBe('1 hour before');
@@ -33,9 +34,12 @@ describe('Alarm Calculations & Notifications', () => {
   });
 
   describe('buildNotificationContent', () => {
-    it('generates correct titles based on offsetMinutes', () => {
+    it('generates correct titles based on offsetMinutes, specifically 10 minutes default', () => {
       const atStart = AlarmService.buildAlarmContent(mockMeeting, 0);
       expect(atStart.title).toBe('⏰ Frontend Interview is starting now');
+
+      const tenMin = AlarmService.buildAlarmContent(mockMeeting, 10);
+      expect(tenMin.title).toBe('🔔 Frontend Interview starts in 10 minutes');
 
       const fifteenMin = AlarmService.buildAlarmContent(mockMeeting, 15);
       expect(fifteenMin.title).toBe('🔔 Frontend Interview starts in 15 minutes');
@@ -44,8 +48,18 @@ describe('Alarm Calculations & Notifications', () => {
       expect(oneHour.title).toBe('🔔 Frontend Interview starts in 1 hour');
     });
 
-    it('calculates exact trigger timestamp', () => {
+    it('includes platform and time range in notification body', () => {
+      const content = AlarmService.buildAlarmContent(mockMeeting, 10);
+      expect(content.body).toContain('GOOGLE MEET');
+      expect(content.body).toContain('2:00 PM – 3:00 PM');
+    });
+
+    it('calculates exact trigger timestamp for 10 min reminder', () => {
       const meetingStart = parseISO(mockMeeting.startTime);
+
+      const trigger10 = subMinutes(meetingStart, 10);
+      expect(trigger10.toISOString()).toBe('2026-09-25T13:50:00.000Z');
+
       const trigger15 = subMinutes(meetingStart, 15);
       expect(trigger15.toISOString()).toBe('2026-09-25T13:45:00.000Z');
 

@@ -1,9 +1,8 @@
 import * as Linking from 'expo-linking';
-import { subMinutes, parseISO, isFuture } from 'date-fns';
 import { Meeting } from '../../types/meeting';
 import { Alarm } from '../../types/alarm';
 import { AlarmsRepository } from '../database/repositories/alarms.repository';
-import { formatMeetingTime } from '../../utils/dates';
+import { NotificationService } from '../notifications/notification.service';
 import { logger } from '../../utils/logger';
 
 export const AlarmService = {
@@ -14,33 +13,7 @@ export const AlarmService = {
     meeting: Meeting,
     offsetMinutes: number
   ): { title: string; body: string } {
-    let title: string;
-    if (offsetMinutes === 0) {
-      title = `⏰ ${meeting.title} is starting now`;
-    } else if (offsetMinutes === 60) {
-      title = `🔔 ${meeting.title} starts in 1 hour`;
-    } else {
-      title = `🔔 ${meeting.title} starts in ${offsetMinutes} minutes`;
-    }
-
-    const timeRange = formatMeetingTime(
-      meeting.startTime,
-      meeting.endTime,
-      meeting.timezone,
-      meeting.isAllDay
-    );
-
-    const parts: string[] = [timeRange];
-    if (meeting.platform !== 'none' && meeting.platform !== 'other') {
-      parts.push(meeting.platform.replace('_', ' ').toUpperCase());
-    } else if (meeting.location) {
-      parts.push(meeting.location);
-    }
-
-    return {
-      title,
-      body: parts.join(' • '),
-    };
+    return NotificationService.buildNotificationContent(meeting, offsetMinutes);
   },
 
   // Backwards compatibility alias
@@ -49,32 +22,13 @@ export const AlarmService = {
   },
 
   /**
-   * Calculates trigger time and prepares alarm record for a meeting
+   * Calculates trigger time and registers OS notification for an alarm
    */
   async scheduleAlarm(
     meeting: Meeting,
     offsetMinutes: number
   ): Promise<{ notificationId?: string; scheduledTime: string; isScheduled: boolean }> {
-    const meetingStartDate = parseISO(meeting.startTime);
-    const triggerDate = subMinutes(meetingStartDate, offsetMinutes);
-    const scheduledTime = triggerDate.toISOString();
-
-    // Do not schedule if trigger time is in past
-    if (!isFuture(triggerDate)) {
-      logger.info(
-        `Trigger time for meeting "${meeting.title}" (-${offsetMinutes}m) is in the past. Skipping alarm.`
-      );
-      return { scheduledTime, isScheduled: false };
-    }
-
-    logger.info(
-      `Alarm scheduled for "${meeting.title}" at ${triggerDate.toISOString()} (-${offsetMinutes}m)`
-    );
-
-    return {
-      scheduledTime,
-      isScheduled: true,
-    };
+    return NotificationService.scheduleAlarmNotification(meeting, offsetMinutes);
   },
 
   // Backwards compatibility alias
@@ -83,11 +37,11 @@ export const AlarmService = {
   },
 
   /**
-   * Cancels a specific alarm by ID
+   * Cancels a specific OS notification and alarm
    */
-  async cancelAlarm(alarmId?: string): Promise<void> {
-    if (!alarmId) return;
-    logger.info(`Cancelled alarm ${alarmId}`);
+  async cancelAlarm(notificationId?: string): Promise<void> {
+    if (!notificationId) return;
+    await NotificationService.cancelNotification(notificationId);
   },
 
   // Backwards compatibility alias
@@ -96,19 +50,19 @@ export const AlarmService = {
   },
 
   /**
-   * Schedules or updates alarms in SQLite
+   * Schedules or updates alarms in SQLite and registers OS notifications
    */
   async configureMeetingAlarms(
     meeting: Meeting,
     offsetMinutesList: number[]
   ): Promise<Alarm[]> {
-    // 1. Clear existing alarms in DB for clean replacement
-    await AlarmsRepository.deleteByMeetingId(meeting.id);
+    // 1. Cancel existing OS notifications and clear database records
+    await this.cancelAllAlarmsForMeeting(meeting.id);
 
-    // 2. Schedule alarms and insert into DB
+    // 2. Schedule new OS notifications and insert into DB
     const createdAlarms: Alarm[] = [];
     for (const offset of offsetMinutesList) {
-      const { scheduledTime } = await this.scheduleAlarm(
+      const { notificationId, scheduledTime } = await this.scheduleAlarm(
         meeting,
         offset
       );
@@ -117,6 +71,7 @@ export const AlarmService = {
         meetingId: meeting.id,
         offsetMinutes: offset,
         scheduledTime,
+        notificationId,
         isEnabled: true,
       });
 
@@ -136,13 +91,20 @@ export const AlarmService = {
     logger.info(`Rescheduling ${existingAlarms.length} alarms for meeting "${meeting.title}"`);
     for (const alarm of existingAlarms) {
       if (alarm.isEnabled && meeting.status !== 'cancelled') {
-        const { scheduledTime } = await this.scheduleAlarm(
+        // Cancel previous OS notification
+        if (alarm.notificationId) {
+          await NotificationService.cancelNotification(alarm.notificationId);
+        }
+
+        // Schedule new OS notification with updated time
+        const { notificationId, scheduledTime } = await this.scheduleAlarm(
           meeting,
           alarm.offsetMinutes
         );
 
         await AlarmsRepository.update(alarm.id, {
           scheduledTime,
+          notificationId,
           status: 'pending',
         });
       }
@@ -150,9 +112,15 @@ export const AlarmService = {
   },
 
   /**
-   * Cancels all alarms when a meeting is deleted or cancelled
+   * Cancels all OS notifications and alarms when a meeting is deleted or cancelled
    */
   async cancelAllAlarmsForMeeting(meetingId: string): Promise<void> {
+    const alarms = await AlarmsRepository.getByMeetingId(meetingId);
+    for (const alarm of alarms) {
+      if (alarm.notificationId) {
+        await NotificationService.cancelNotification(alarm.notificationId);
+      }
+    }
     await AlarmsRepository.deleteByMeetingId(meetingId);
   },
 
@@ -167,5 +135,3 @@ export const AlarmService = {
     }
   },
 };
-
-export const NotificationService = AlarmService;
